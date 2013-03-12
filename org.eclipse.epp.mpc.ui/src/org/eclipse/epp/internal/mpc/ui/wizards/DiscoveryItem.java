@@ -16,19 +16,16 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.text.MessageFormat;
 
-import org.eclipse.epp.internal.mpc.core.service.Node;
-import org.eclipse.epp.internal.mpc.core.service.Tag;
-import org.eclipse.epp.internal.mpc.core.service.Tags;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.epp.internal.mpc.core.util.TextUtil;
 import org.eclipse.epp.internal.mpc.ui.MarketplaceClientUi;
 import org.eclipse.epp.internal.mpc.ui.MarketplaceClientUiPlugin;
 import org.eclipse.epp.internal.mpc.ui.catalog.MarketplaceNodeCatalogItem;
 import org.eclipse.epp.internal.mpc.ui.util.Util;
-import org.eclipse.epp.mpc.core.payment.PaymentItem;
 import org.eclipse.epp.mpc.core.model.INode;
 import org.eclipse.epp.mpc.core.model.ITag;
 import org.eclipse.epp.mpc.core.model.ITags;
+import org.eclipse.epp.mpc.core.payment.PaymentItem;
 import org.eclipse.epp.mpc.ui.Operation;
 import org.eclipse.equinox.internal.p2.discovery.AbstractCatalogSource;
 import org.eclipse.equinox.internal.p2.discovery.model.CatalogItem;
@@ -357,10 +354,6 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 
 			buttonController = new ItemButtonController(viewer, this, button, secondaryButton);
 
-			if (shouldShowPurchaseButton()) {
-				numColumns += 1;
-				createPurchaseButton(composite);
-			}
 		} else {
 			installInfoLink = createStyledTextLabel(composite);
 			setWidgetId(installInfoLink, WIDGET_ID_LEARNMORE);
@@ -374,6 +367,10 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 				}
 			});
 			GridDataFactory.swtDefaults().align(SWT.TRAIL, SWT.CENTER).grab(false, true).applyTo(installInfoLink);
+		}
+		if (shouldShowPurchaseButton()) {
+			numColumns += 1;
+			createPurchaseButton(composite);
 		}
 		GridLayoutFactory.fillDefaults()
 		.numColumns(numColumns)

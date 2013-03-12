@@ -328,7 +328,6 @@ final class PaymentButtonController {
 		} else {
 			MarketplaceClientUi.error("Missing handler: " + paymentItem + "/" + paymentModule,
 					new NullPointerException());
-			System.out.println("oops");
 		}
 	}
 

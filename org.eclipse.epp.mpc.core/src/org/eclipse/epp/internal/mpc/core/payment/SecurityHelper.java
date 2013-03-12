@@ -14,6 +14,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
+import java.lang.reflect.Constructor;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.ByteBuffer;
@@ -327,19 +329,9 @@ final class SecurityHelper {
 			throw new SecurityException(NLS.bind(Messages.SecurityHelper_trusted_keystore_missing,
 					bundleDescription(bundle)));
 		}
+		File keystoreFile = fileFromBundle(bundle, path);
 		URL resolvedURL = FileLocator.resolve(entryURL);
-		URL fileURL = FileLocator.toFileURL(entryURL);
-		File keystoreFile;
-		try {
-			keystoreFile = new File(fileURL.toURI());
-		} catch (URISyntaxException e) {
-			//can't happen, FileLocator returns well-formed URLs
-			throw new IllegalStateException(e);
-		}
-		if (!keystoreFile.exists()) {
-			throw new SecurityException(NLS.bind(Messages.SecurityHelper_trusted_keystore_file_missing,
-					bundleDescription(bundle), path));
-		}
+		URL fileURL = keystoreFile.toURI().toURL();
 		RandomAccessFile raf = new RandomAccessFile(keystoreFile, "r"); //$NON-NLS-1$
 		FileLock lock = null;
 		try {
@@ -350,14 +342,12 @@ final class SecurityHelper {
 						keystoreFile.getAbsolutePath()));
 			}
 
-			TrustEngine te = new KeyStoreTrustEngine(keystoreFile.getAbsolutePath(),
-					"JKS", pass, "PaymentTrustStore", null); //$NON-NLS-1$ //$NON-NLS-2$
+			TrustEngine te = getKeyStoreTrustEngine(bundle, pass, keystoreFile);
 			try {
 				te.getAliases();//load the trust store from file
 			} catch (GeneralSecurityException e) {
 				throw new SecurityException(e);
 			}
-
 
 			if (!fileURL.equals(resolvedURL)) {
 				//check file content integrity
@@ -415,5 +405,48 @@ final class SecurityHelper {
 				raf.close();
 			}
 		}
+	}
+
+	private static KeyStoreTrustEngine getKeyStoreTrustEngine(Bundle bundle, char[] pass, File keystoreFile) {
+		Constructor<?>[] declaredConstructors = KeyStoreTrustEngine.class.getDeclaredConstructors();
+		Constructor<?> keyStoreTrustEngineConstructor = declaredConstructors[0];
+
+		try {
+			KeyStoreTrustEngine keyStoreTrustEngine;
+			if (keyStoreTrustEngineConstructor.getParameterTypes().length == 5) {
+				//luna
+				keyStoreTrustEngine = (KeyStoreTrustEngine) keyStoreTrustEngineConstructor.newInstance(
+						keystoreFile.getAbsolutePath(), "JKS", pass, "PaymentTrustStore", null); //$NON-NLS-1$//$NON-NLS-2$
+			} else if (keyStoreTrustEngineConstructor.getParameterTypes().length == 4) {
+				//kepler
+				keyStoreTrustEngine = (KeyStoreTrustEngine) keyStoreTrustEngineConstructor.newInstance(
+						keystoreFile.getAbsolutePath(), "JKS", pass, "PaymentTrustStore"); //$NON-NLS-1$//$NON-NLS-2$
+			} else {
+				throw new SecurityException(NLS.bind(Messages.SecurityHelper_unable_to_verify_bundle,
+						bundleDescription(bundle)));
+			}
+			return keyStoreTrustEngine;
+		} catch (Exception e) {
+			throw new SecurityException(NLS.bind(Messages.SecurityHelper_unable_to_verify_bundle,
+					bundleDescription(bundle), e.getMessage()), e);
+		}
+	}
+
+	static File fileFromBundle(Bundle bundle, String path) throws IOException {
+		URL bundleURL = bundle.getEntry(path);
+		URL fileURL = FileLocator.toFileURL(bundleURL);
+		File keystoreFile;
+		try {
+			// unfortunately FileLocator returns malformed URLs, see bugs.eclipse.org #145096 - thus don't use URL.toURI
+			keystoreFile = new File(new URI(fileURL.getProtocol(), fileURL.getPath(), null));
+		} catch (URISyntaxException e) {
+			//can really happen, if path to bundle contains problematic chars
+			throw new IllegalStateException(e);
+		}
+		if (!keystoreFile.exists()) {
+			throw new SecurityException(NLS.bind(Messages.SecurityHelper_trusted_keystore_file_missing,
+					bundleDescription(bundle), path));
+		}
+		return keystoreFile;
 	}
 }
