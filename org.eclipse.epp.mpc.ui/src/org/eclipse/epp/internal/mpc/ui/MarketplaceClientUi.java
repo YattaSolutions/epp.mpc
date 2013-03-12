@@ -19,7 +19,6 @@ import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -164,8 +163,7 @@ public class MarketplaceClientUi {
 					if (profile != null) {
 						IQueryResult<IInstallableUnit> result = profile.available(QueryUtil.createIUGroupQuery(),
 								monitor);
-						for (Iterator<IInstallableUnit> it = result.iterator(); it.hasNext();) {
-							IInstallableUnit unit = it.next();
+						for (IInstallableUnit unit : result) {
 							iUs.put(unit.getId(), unit);
 						}
 					}
@@ -191,8 +189,7 @@ public class MarketplaceClientUi {
 					if (profile != null) {
 						IQueryResult<IInstallableUnit> result = profile.available(QueryUtil.createIUGroupQuery(),
 								monitor);
-						for (Iterator<IInstallableUnit> it = result.iterator(); it.hasNext();) {
-							IInstallableUnit unit = it.next();
+						for (IInstallableUnit unit : result) {
 							features.add(unit.getId());
 						}
 					}

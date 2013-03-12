@@ -52,7 +52,19 @@ public class Unmarshaller extends DefaultHandler {
 	}
 
 
-	private final Map<String,UnmarshalContentHandler> elementNameToUnmarshalContentHandler = new HashMap<String, UnmarshalContentHandler>();
+	private final Map<String, UnmarshalContentHandler> elementNameToUnmarshalContentHandler;
+
+	public Unmarshaller() {
+		this(null);
+		initDefault(elementNameToUnmarshalContentHandler);
+	}
+
+	public Unmarshaller(Map<String, UnmarshalContentHandler> handlers) {
+		this.elementNameToUnmarshalContentHandler = handlers == null ? new HashMap<String, UnmarshalContentHandler>()
+				: handlers;
+	}
+
+	protected static void initDefault(Map<String, UnmarshalContentHandler> elementNameToUnmarshalContentHandler)
 	{
 		elementNameToUnmarshalContentHandler.put("marketplace", new MarketplaceContentHandler()); //$NON-NLS-1$
 		elementNameToUnmarshalContentHandler.put("market", new MarketContentHandler()); //$NON-NLS-1$

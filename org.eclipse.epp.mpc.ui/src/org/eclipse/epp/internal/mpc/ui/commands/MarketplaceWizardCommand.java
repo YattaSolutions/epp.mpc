@@ -73,6 +73,8 @@ public class MarketplaceWizardCommand extends AbstractHandler implements IHandle
 
 	private String wizardState;
 
+	private String wizardPage;
+
 	private Map<String, Operation> operationByNodeId;
 
 	public Object execute(ExecutionEvent event) throws ExecutionException {
@@ -83,6 +85,7 @@ public class MarketplaceWizardCommand extends AbstractHandler implements IHandle
 
 		MarketplaceCatalogConfiguration configuration = new MarketplaceCatalogConfiguration();
 		configuration.setVerifyUpdateSiteAvailability(false);
+		configuration.setInitialPage(wizardPage);
 
 		if (catalogDescriptors == null || catalogDescriptors.isEmpty()) {
 			final IStatus remoteCatalogStatus = installRemoteCatalogs();
@@ -239,6 +242,10 @@ public class MarketplaceWizardCommand extends AbstractHandler implements IHandle
 		this.wizardState = wizardState;
 	}
 
+	public void setWizardPage(String wizardPage) {
+		this.wizardPage = wizardPage;
+	}
+
 	public void setOperationByNodeId(Map<String, Operation> operationByNodeId) {
 		this.operationByNodeId = operationByNodeId;
 	}
@@ -296,5 +303,4 @@ public class MarketplaceWizardCommand extends AbstractHandler implements IHandle
 		}
 		catalogRegistry.register(descriptor);
 	}
-
 }

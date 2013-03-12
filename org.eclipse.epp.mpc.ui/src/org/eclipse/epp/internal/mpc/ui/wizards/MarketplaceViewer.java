@@ -521,7 +521,8 @@ public class MarketplaceViewer extends CatalogViewer {
 		if (getWizard().wantInitializeInitialSelection()) {
 			try {
 				getWizard().initializeInitialSelection();
-				catalogUpdated(false, false);
+				super.updateCatalog();
+				//catalogUpdated(false, false);
 			} catch (CoreException e) {
 				boolean wasCancelled = e.getStatus().getSeverity() == IStatus.CANCEL;
 				if (!wasCancelled) {
@@ -541,7 +542,7 @@ public class MarketplaceViewer extends CatalogViewer {
 		return MarketplaceClientUi.computeStatus(e, message);
 	}
 
-	private MarketplaceWizard getWizard() {
+	protected MarketplaceWizard getWizard() {
 		return wizard;
 	}
 

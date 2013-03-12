@@ -13,6 +13,7 @@ package org.eclipse.epp.internal.mpc.ui.catalog;
 import java.net.URL;
 
 import org.eclipse.epp.internal.mpc.core.service.Node;
+import org.eclipse.epp.mpc.core.payment.PaymentItem;
 import org.eclipse.equinox.internal.p2.discovery.model.CatalogItem;
 
 /**
@@ -23,6 +24,10 @@ public class MarketplaceNodeCatalogItem extends CatalogItem {
 	private URL marketplaceUrl;
 
 	private Boolean updateAvailable;
+
+	private PaymentItem paymentItem;
+
+	private CatalogItem discoveredPaymentConnector;
 
 	@Override
 	public Node getData() {
@@ -43,6 +48,22 @@ public class MarketplaceNodeCatalogItem extends CatalogItem {
 
 	public void setUpdateAvailable(Boolean updateAvailable) {
 		this.updateAvailable = updateAvailable;
+	}
+
+	public PaymentItem getPaymentItem() {
+		return paymentItem;
+	}
+
+	public void setPaymentItem(PaymentItem paymentItem) {
+		this.paymentItem = paymentItem;
+	}
+
+	public CatalogItem getDiscoveredPaymentConnector() {
+		return discoveredPaymentConnector;
+	}
+
+	public void setDiscoveredPaymentConnector(CatalogItem discoveredPaymentConnector) {
+		this.discoveredPaymentConnector = discoveredPaymentConnector;
 	}
 
 	@Override

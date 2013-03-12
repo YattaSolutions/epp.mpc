@@ -27,6 +27,8 @@ public class MarketplaceCatalogConfiguration extends CatalogConfiguration {
 
 	private String initialState;
 
+	private String initialPage;
+
 	private Map<String, Operation> initialOperationByNodeId;
 
 	public MarketplaceCatalogConfiguration() {
@@ -69,4 +71,11 @@ public class MarketplaceCatalogConfiguration extends CatalogConfiguration {
 		this.initialOperationByNodeId = initialOperationByNodeId;
 	}
 
+	public void setInitialPage(String initialPage) {
+		this.initialPage = initialPage;
+	}
+
+	public String getInitialPage() {
+		return initialPage;
+	}
 }

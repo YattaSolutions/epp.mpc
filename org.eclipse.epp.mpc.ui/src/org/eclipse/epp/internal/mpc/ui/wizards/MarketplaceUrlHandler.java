@@ -19,6 +19,7 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -82,29 +83,12 @@ public abstract class MarketplaceUrlHandler {
 	private static final String MPC_INSTALL = "mpc_install"; //$NON-NLS-1$
 
 	public static SolutionInstallationInfo createSolutionInstallInfo(String url) {
-		String query;
-		try {
-			query = new URL(url).getQuery();
-		} catch (MalformedURLException e) {
-			return null;
-		}
-		if (query == null) {
-			return null;
-		}
-		String[] params = query.split(PARAM_SPLIT_REGEX);
 		String installId = null;
 		String state = null;
-		for (String param : params) {
-			String[] keyValue = param.split(EQUALS_REGEX);
-			if(keyValue.length == 2) {
-				String key = keyValue[0];
-				String value = keyValue[1];
-				if (key.equals(MPC_INSTALL)) {
-					installId = value;
-				} else if (key.equals(MPC_STATE)) {
-					state = value;
-				}
-			}
+		Map<String, String> query = parseQuery(url);
+		if (query != null) {
+			installId = query.get(MPC_INSTALL);
+			state = query.get(MPC_STATE);
 		}
 		if (installId != null) {
 			CatalogDescriptor descriptor = CatalogRegistry.getInstance().findCatalogDescriptor(url);
@@ -123,6 +107,34 @@ public abstract class MarketplaceUrlHandler {
 			return info;
 		}
 		return null;
+	}
+
+	protected static String getMPCState(String url) {
+		Map<String, String> query = parseQuery(url);
+		return query == null ? null : query.get(MPC_STATE);
+	}
+
+	private static Map<String, String> parseQuery(String url) {
+		String query;
+		try {
+			query = new URL(url).getQuery();
+		} catch (MalformedURLException e) {
+			return null;
+		}
+		if (query == null) {
+			return null;
+		}
+		Map<String, String> values = new LinkedHashMap<String, String>();
+		String[] params = query.split(PARAM_SPLIT_REGEX);
+		for (String param : params) {
+			String[] keyValue = param.split(EQUALS_REGEX);
+			if (keyValue.length == 2) {
+				String key = keyValue[0];
+				String value = keyValue[1];
+				values.put(key, value);
+			}
+		}
+		return values;
 	}
 
 	public static boolean isPotentialSolution(String url) {

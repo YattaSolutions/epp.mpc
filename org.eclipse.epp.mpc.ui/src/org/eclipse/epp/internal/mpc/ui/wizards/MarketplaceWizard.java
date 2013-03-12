@@ -7,7 +7,7 @@
  *
  * Contributors:
  * 	The Eclipse Foundation - initial API and implementation
- *  Yatta Solutions - news (bug 401721)
+ *  Yatta Solutions - news (bug 401721), payment (bug 409269)
  *  JBoss (Pascal Rapicault) - Bug 406907 - Add p2 remediation page to MPC install flow
  *******************************************************************************/
 package org.eclipse.epp.internal.mpc.ui.wizards;
@@ -19,6 +19,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -30,6 +31,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.eclipse.core.commands.ExecutionEvent;
+import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -43,17 +46,20 @@ import org.eclipse.epp.internal.mpc.ui.MarketplaceClientUi;
 import org.eclipse.epp.internal.mpc.ui.MarketplaceClientUiPlugin;
 import org.eclipse.epp.internal.mpc.ui.catalog.MarketplaceCatalog;
 import org.eclipse.epp.internal.mpc.ui.catalog.MarketplaceDiscoveryStrategy;
+import org.eclipse.epp.internal.mpc.ui.commands.MarketplaceWizardCommand;
 import org.eclipse.epp.internal.mpc.ui.operations.AbstractProvisioningOperation;
 import org.eclipse.epp.internal.mpc.ui.operations.FeatureDescriptor;
 import org.eclipse.epp.internal.mpc.ui.operations.ProfileChangeOperationComputer;
 import org.eclipse.epp.internal.mpc.ui.operations.ProfileChangeOperationComputer.OperationType;
 import org.eclipse.epp.internal.mpc.ui.wizards.SelectionModel.CatalogItemEntry;
 import org.eclipse.epp.internal.mpc.ui.wizards.SelectionModel.FeatureEntry;
+import org.eclipse.epp.mpc.core.payment.PaymentService;
 import org.eclipse.epp.mpc.ui.CatalogDescriptor;
 import org.eclipse.equinox.internal.p2.discovery.AbstractDiscoveryStrategy;
 import org.eclipse.equinox.internal.p2.discovery.model.CatalogItem;
 import org.eclipse.equinox.internal.p2.ui.ProvUI;
 import org.eclipse.equinox.internal.p2.ui.discovery.util.WorkbenchUtil;
+import org.eclipse.equinox.internal.p2.ui.discovery.wizards.CatalogPage;
 import org.eclipse.equinox.internal.p2.ui.discovery.wizards.DiscoveryWizard;
 import org.eclipse.equinox.p2.metadata.IInstallableUnit;
 import org.eclipse.equinox.p2.operations.ProfileChangeOperation;
@@ -114,6 +120,8 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 
 	private String errorMessage;
 
+	private PaymentService paymentService;
+
 	public String getErrorMessage() {
 		return errorMessage;
 	}
@@ -147,6 +155,10 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 	@Override
 	public MarketplaceCatalog getCatalog() {
 		return (MarketplaceCatalog) super.getCatalog();
+	}
+
+	public PaymentService getPaymentService() {
+		return paymentService;
 	}
 
 	@Override
@@ -305,13 +317,23 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 
 	@Override
 	public IWizardPage getStartingPage() {
-		if (getConfiguration().getCatalogDescriptor() != null) {
+		String pageId = getStartingPageId();
+		if (pageId != null) {
+			IWizardPage page = getPage(pageId);
+			if (page != null) {
+				return page;
+			}
+		} else if (getConfiguration().getCatalogDescriptor() != null) {
 			if (wantInitializeInitialSelection()) {
 				return getFeatureSelectionWizardPage();
 			}
 			return getCatalogPage();
 		}
 		return super.getStartingPage();
+	}
+
+	private String getStartingPageId() {
+		return getConfiguration().getInitialPage();
 	}
 
 	private void doDefaultCatalogSelection() {
@@ -416,31 +438,18 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 	}
 
 	public void openUrl(String url) {
-		CatalogDescriptor catalogDescriptor = getConfiguration().getCatalogDescriptor();
-		URL catalogUrl = catalogDescriptor.getUrl();
-		URI catalogUri;
-		try {
-			catalogUri = catalogUrl.toURI();
-		} catch (URISyntaxException e) {
-			// should never happen
-			throw new IllegalStateException(e);
-		}
+		String catalogUrl = getCatalogUrl();
 		if (WorkbenchBrowserSupport.getInstance().isInternalWebBrowserAvailable()
-				&& url.toLowerCase().startsWith(catalogUri.toString().toLowerCase())) {
+				&& url.toLowerCase().startsWith(catalogUrl.toLowerCase())) {
 			int style = IWorkbenchBrowserSupport.AS_EDITOR | IWorkbenchBrowserSupport.LOCATION_BAR
 					| IWorkbenchBrowserSupport.NAVIGATION_BAR;
-			String browserId = "MPC-" + catalogUri.toString().replaceAll("[^a-zA-Z0-9_-]", "_"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+			String browserId = "MPC-" + catalogUrl.replaceAll("[^a-zA-Z0-9_-]", "_"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 			try {
+				CatalogDescriptor catalogDescriptor = getConfiguration().getCatalogDescriptor();
 				IWebBrowser browser = WorkbenchBrowserSupport.getInstance().createBrowser(style, browserId,
 						catalogDescriptor.getLabel(), catalogDescriptor.getDescription());
 				final String originalUrl = url;
-				if (url.indexOf('?') == -1) {
-					url += '?';
-				} else {
-					url += '&';
-				}
-				String state = new SelectionModelStateSerializer(getCatalog(), getSelectionModel()).serialize();
-				url += "mpc=true&mpc_state=" + URLEncoder.encode(state, "UTF-8"); //$NON-NLS-1$//$NON-NLS-2$
+				url = appendWizardState(url);
 				browser.openURL(new URL(url)); // ORDER DEPENDENCY
 				getContainer().getShell().close();
 				if (!hookLocationListener(browser)) { // ORDER DEPENDENCY
@@ -453,11 +462,37 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 				IStatus status = new Status(IStatus.ERROR, MarketplaceClientUi.BUNDLE_ID, NLS.bind(
 						Messages.MarketplaceWizard_cannotOpenUrl, new Object[] { url, e.getMessage() }), e);
 				StatusManager.getManager().handle(status, StatusManager.SHOW | StatusManager.BLOCK | StatusManager.LOG);
-			} catch (UnsupportedEncodingException e) {
-				throw new IllegalStateException(e); // should never happen
 			}
 		} else {
 			WorkbenchUtil.openUrl(url, IWorkbenchBrowserSupport.AS_EXTERNAL);
+		}
+	}
+
+	private String getCatalogUrl() {
+		CatalogDescriptor catalogDescriptor = getConfiguration().getCatalogDescriptor();
+		URL catalogUrl = catalogDescriptor.getUrl();
+		URI catalogUri;
+		try {
+			catalogUri = catalogUrl.toURI();
+		} catch (URISyntaxException e) {
+			// should never happen
+			throw new IllegalStateException(e);
+		}
+		return catalogUri.toString();
+	}
+
+	private String appendWizardState(String url) {
+		try {
+			if (url.indexOf('?') == -1) {
+				url += '?';
+			} else {
+				url += '&';
+			}
+			String state = new SelectionModelStateSerializer(getCatalog(), getSelectionModel()).serialize();
+			url += "mpc=true&mpc_state=" + URLEncoder.encode(state, "UTF-8"); //$NON-NLS-1$//$NON-NLS-2$
+			return url;
+		} catch (UnsupportedEncodingException e) {
+			throw new IllegalStateException(e); // should never happen
 		}
 	}
 
@@ -652,13 +687,15 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 	}
 
 	void initializeCatalog() {
+		this.paymentService = null;
 		for (AbstractDiscoveryStrategy strategy : getCatalog().getDiscoveryStrategies()) {
 			strategy.dispose();
 		}
 		getCatalog().getDiscoveryStrategies().clear();
 		if (getConfiguration().getCatalogDescriptor() != null) {
-			getCatalog().getDiscoveryStrategies().add(
-					new MarketplaceDiscoveryStrategy(getConfiguration().getCatalogDescriptor()));
+			MarketplaceDiscoveryStrategy strategy = new MarketplaceDiscoveryStrategy(getConfiguration().getCatalogDescriptor());
+			getCatalog().getDiscoveryStrategies().add(strategy);
+			this.paymentService = strategy.getPaymentService();
 		}
 	}
 
@@ -712,4 +749,46 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 		CatalogRegistry.getInstance().addCatalogNews(catalogDescriptor, news);
 	}
 
+	public Object suspendWizard() {
+		String catalogUrl = getCatalogUrl();
+		String key = appendWizardState(catalogUrl);
+		getContainer().getShell().close();
+		return key;
+	}
+
+	public static void resumeWizard(Display display, Object state, boolean proceedWithInstall) {
+		String catalogUrl = (String) state;
+		CatalogDescriptor descriptor = catalogUrl == null ? null : CatalogRegistry.getInstance().findCatalogDescriptor(
+				catalogUrl);
+		final MarketplaceWizardCommand command = new MarketplaceWizardCommand();
+		if (descriptor != null) {
+			descriptor = new CatalogDescriptor(descriptor);
+			descriptor.setLabel(MarketplaceUrlHandler.DESCRIPTOR_HINT);
+			command.setSelectedCatalogDescriptor(descriptor);
+		}
+		String mpcState = MarketplaceUrlHandler.getMPCState(catalogUrl);
+		if (mpcState != null && mpcState.length() > 0) {
+			try {
+				command.setWizardState(URLDecoder.decode(mpcState, "UTF-8")); //$NON-NLS-1$
+			} catch (UnsupportedEncodingException e) {
+				throw new IllegalStateException(e); // should never happen
+			}
+			if (!proceedWithInstall) {
+				command.setWizardPage(CatalogPage.class.getSimpleName());
+			}
+		}
+		display.asyncExec(new Runnable() {
+
+			public void run() {
+				try {
+					command.execute(new ExecutionEvent());
+				} catch (ExecutionException e) {
+					IStatus status = MarketplaceClientUi.computeStatus(e,
+							Messages.MarketplaceBrowserIntegration_cannotOpenMarketplaceWizard);
+					StatusManager.getManager().handle(status,
+							StatusManager.SHOW | StatusManager.BLOCK | StatusManager.LOG);
+				}
+			}
+		});
+	}
 }

@@ -28,10 +28,12 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProduct;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.epp.internal.mpc.core.MarketplaceClientCore;
+import org.eclipse.epp.internal.mpc.core.payment.PaymentServiceImpl;
 import org.eclipse.epp.internal.mpc.core.service.CachingMarketplaceService;
 import org.eclipse.epp.internal.mpc.core.service.Categories;
 import org.eclipse.epp.internal.mpc.core.service.Category;
@@ -45,6 +47,7 @@ import org.eclipse.epp.internal.mpc.core.service.SearchResult;
 import org.eclipse.epp.internal.mpc.ui.MarketplaceClientUi;
 import org.eclipse.epp.internal.mpc.ui.catalog.MarketplaceCategory.Contents;
 import org.eclipse.epp.internal.mpc.ui.util.ConcurrentTaskManager;
+import org.eclipse.epp.mpc.core.payment.PaymentService;
 import org.eclipse.epp.mpc.ui.CatalogDescriptor;
 import org.eclipse.equinox.internal.p2.discovery.AbstractDiscoveryStrategy;
 import org.eclipse.equinox.internal.p2.discovery.model.CatalogCategory;
@@ -71,6 +74,8 @@ public class MarketplaceDiscoveryStrategy extends AbstractDiscoveryStrategy {
 
 	private final MarketplaceService marketplaceService;
 
+	private final PaymentServiceImpl paymentService;
+
 	private MarketplaceCatalogSource source;
 
 	private MarketplaceInfo marketplaceInfo;
@@ -83,6 +88,13 @@ public class MarketplaceDiscoveryStrategy extends AbstractDiscoveryStrategy {
 		}
 		this.catalogDescriptor = catalogDescriptor;
 		marketplaceService = createMarketplaceService();
+		PaymentServiceImpl paymentService = new PaymentServiceImpl(marketplaceService, catalogDescriptor.getUrl()
+				.toExternalForm());
+		if (paymentService.isPaymentServiceEnabled()) {
+			this.paymentService = paymentService;
+		} else {
+			this.paymentService = null;
+		}
 		source = new MarketplaceCatalogSource(marketplaceService);
 		marketplaceInfo = MarketplaceInfo.getInstance();
 	}
@@ -129,6 +141,9 @@ public class MarketplaceDiscoveryStrategy extends AbstractDiscoveryStrategy {
 			marketplaceInfo.save();
 			marketplaceInfo = null;
 		}
+		if (paymentService != null) {
+			paymentService.dispose();
+		}
 		super.dispose();
 	}
 
@@ -167,6 +182,8 @@ public class MarketplaceDiscoveryStrategy extends AbstractDiscoveryStrategy {
 				Set<URI> knownRepositories = new HashSet<URI>(
 						Arrays.asList(repositoryTracker.getKnownRepositories(session)));
 
+				final MultiStatus errors = new MultiStatus(MarketplaceClientCore.BUNDLE_ID, 0,
+						Messages.MarketplaceDiscoveryStrategy_Error_during_query, null);
 				for (final Node node : result.getNodes()) {
 					final MarketplaceNodeCatalogItem catalogItem = new MarketplaceNodeCatalogItem();
 					catalogItem.setMarketplaceUrl(catalogDescriptor.getUrl());
@@ -258,6 +275,10 @@ public class MarketplaceDiscoveryStrategy extends AbstractDiscoveryStrategy {
 							createIcon(catalogItem, node);
 						}
 					}
+					if (paymentService != null) {
+						executor.submit(new PaymentServiceRunnable(paymentService,
+								paymentService.getDiscoveryService(), catalogItem, monitor, errors));
+					}
 					items.add(catalogItem);
 					marketplaceInfo.map(catalogItem.getMarketplaceUrl(), node);
 					catalogItem.setInstalled(marketplaceInfo.computeInstalled(computeInstalledFeatures(monitor),
@@ -269,6 +290,9 @@ public class MarketplaceDiscoveryStrategy extends AbstractDiscoveryStrategy {
 				} catch (CoreException e) {
 					// just log, since this is expected to occur frequently
 					MarketplaceClientUi.error(e);
+				}
+				if (errors.getChildren().length > 0) {
+					MarketplaceClientUi.getLog().log(errors);
 				}
 			} finally {
 				executor.shutdownNow();
@@ -511,4 +535,7 @@ public class MarketplaceDiscoveryStrategy extends AbstractDiscoveryStrategy {
 		}
 	}
 
+	public PaymentService getPaymentService() {
+		return paymentService;
+	}
 }

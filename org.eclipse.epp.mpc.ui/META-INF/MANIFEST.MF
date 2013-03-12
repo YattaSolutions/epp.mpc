@@ -25,6 +25,7 @@ Export-Package: org.eclipse.epp.internal.mpc.ui;x-internal:=true,
  org.eclipse.epp.internal.mpc.ui.catalog;x-internal:=true,
  org.eclipse.epp.internal.mpc.ui.commands;x-internal:=true,
  org.eclipse.epp.internal.mpc.ui.operations;x-internal:=true,
+ org.eclipse.epp.internal.mpc.ui.payment.discovery;x-internal:=true,
  org.eclipse.epp.internal.mpc.ui.util;x-internal:=true,
  org.eclipse.epp.internal.mpc.ui.wizards;x-internal:=true,
  org.eclipse.epp.mpc.ui

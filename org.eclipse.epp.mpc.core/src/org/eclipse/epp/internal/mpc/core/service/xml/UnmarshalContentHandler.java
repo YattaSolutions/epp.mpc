@@ -48,6 +48,20 @@ public abstract class UnmarshalContentHandler {
 		}
 	}
 
+	protected void startNested(UnmarshalContentHandler childHandler, Object parentModel) {
+		childHandler.setParentModel(parentModel);
+		childHandler.setParentHandler(this);
+		childHandler.setUnmarshaller(getUnmarshaller());
+		getUnmarshaller().setCurrentHandler(childHandler);
+	}
+
+	protected void endNested(String uri, String localName) throws SAXException {
+		getUnmarshaller().setCurrentHandler(parentHandler);
+		if (parentHandler != null) {
+			parentHandler.endElement(uri, localName);
+		}
+	}
+
 	protected Unmarshaller getUnmarshaller() {
 		return unmarshaller;
 	}

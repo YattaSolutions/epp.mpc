@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension-point id="paymentModules" name="Payment Modules" schema="schema/paymentModules.exsd"/>
+   <extension-point id="paymentDiscovery" name="Payment Discovery Locations (internal only)" schema="schema/paymentDiscovery.exsd"/>
+</plugin>

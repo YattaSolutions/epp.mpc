@@ -78,8 +78,10 @@ public class DefaultMarketplaceService extends RemoteMarketplaceService<Marketpl
 
 	public static final String API_TAXONOMY_URI = "taxonomy/term/"; //$NON-NLS-1$
 
+	public static final String ECLIPSE_MARKETPLACE_LOCATION = "http://marketplace.eclipse.org"; //$NON-NLS-1$
+
 	public static final String DEFAULT_SERVICE_LOCATION = System.getProperty(MarketplaceService.class.getName()
-			+ ".url", "http://marketplace.eclipse.org"); //$NON-NLS-1$//$NON-NLS-2$
+			+ ".url", ECLIPSE_MARKETPLACE_LOCATION); //$NON-NLS-1$
 
 	/**
 	 * parameter identifying client

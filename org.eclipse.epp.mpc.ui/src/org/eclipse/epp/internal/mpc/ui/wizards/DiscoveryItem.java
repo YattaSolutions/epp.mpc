@@ -15,13 +15,16 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.text.MessageFormat;
 
+import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.epp.internal.mpc.core.service.Node;
 import org.eclipse.epp.internal.mpc.core.service.Tag;
 import org.eclipse.epp.internal.mpc.core.service.Tags;
 import org.eclipse.epp.internal.mpc.core.util.TextUtil;
 import org.eclipse.epp.internal.mpc.ui.MarketplaceClientUi;
 import org.eclipse.epp.internal.mpc.ui.MarketplaceClientUiPlugin;
+import org.eclipse.epp.internal.mpc.ui.catalog.MarketplaceNodeCatalogItem;
 import org.eclipse.epp.internal.mpc.ui.util.Util;
+import org.eclipse.epp.mpc.core.payment.PaymentItem;
 import org.eclipse.equinox.internal.p2.discovery.AbstractCatalogSource;
 import org.eclipse.equinox.internal.p2.discovery.model.CatalogItem;
 import org.eclipse.equinox.internal.p2.discovery.model.Overview;
@@ -33,6 +36,7 @@ import org.eclipse.jface.layout.GridLayoutFactory;
 import org.eclipse.jface.layout.RowLayoutFactory;
 import org.eclipse.jface.window.IShellProvider;
 import org.eclipse.jface.window.ToolTip;
+import org.eclipse.jface.wizard.IWizard;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.SWTError;
@@ -93,7 +97,7 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 
 	private static final int TAGS_MARGIN_TOP = 2;
 
-	private static final int BUTTONBAR_MARGIN_TOP = 8;
+	private static final int BUTTONBAR_MARGIN_TOP = 12;
 
 	private static final int SEPARATOR_MARGIN_TOP = 8;
 
@@ -302,20 +306,25 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 			Button button = new Button(composite, SWT.PUSH);
 			GridDataFactory.swtDefaults().align(SWT.TRAIL, SWT.CENTER)
 			.minSize(56, SWT.DEFAULT)
-			.grab(false, true)
+			.grab(true, true)
 			.applyTo(button);
 
 			Button secondaryButton = null;
 			if (connector.isInstalled()) {
 				secondaryButton = new Button(composite, SWT.PUSH);
-				numColumns = 2;
+				numColumns += 1;
 				GridDataFactory.swtDefaults().align(SWT.TRAIL, SWT.CENTER)
 				.minSize(56, SWT.DEFAULT)
-				.grab(false, true)
+				.grab(true, true)
 				.applyTo(secondaryButton);
 			}
 
 			buttonController = new ItemButtonController(viewer, this, button, secondaryButton);
+
+			if (shouldShowPurchaseButton()) {
+				numColumns += 1;
+				createPurchaseButton(composite);
+			}
 		} else {
 			installInfoLink = createStyledTextLabel(composite);
 			installInfoLink.setToolTipText(Messages.DiscoveryItem_installInstructionsTooltip);
@@ -335,6 +344,46 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 		.extendedMargins(0, 5, 0, 0)
 		.spacing(5, 0)
 		.applyTo(composite);
+	}
+
+	private boolean shouldShowPurchaseButton() {
+		if (connector instanceof MarketplaceNodeCatalogItem) {
+			MarketplaceNodeCatalogItem marketplaceItem = (MarketplaceNodeCatalogItem) connector;
+			PaymentItem paymentItem = marketplaceItem.getPaymentItem();
+			if (paymentItem != null && paymentItem.getPaymentModule() != null) {
+				return true;
+			}
+			CatalogItem discoveredPaymentConnector = marketplaceItem.getDiscoveredPaymentConnector();
+			return discoveredPaymentConnector != null;
+		}
+		return false;
+	}
+
+	private void createPurchaseButton(Composite composite) {
+		Button purchaseButton = new Button(composite, SWT.PUSH);
+		GridDataFactory.swtDefaults()
+		.align(SWT.TRAIL, SWT.CENTER)
+		.minSize(56, SWT.DEFAULT)
+		.grab(true, true)
+		.applyTo(purchaseButton);
+		new PaymentButtonController(this.viewer.getWizard().getPaymentService(), this, purchaseButton, this.viewer.getWizard()
+				.getContainer(), getPurchaseContext());
+	}
+
+	private IAdaptable getPurchaseContext() {
+		return new IAdaptable() {
+
+			public Object getAdapter(@SuppressWarnings("rawtypes") Class adapter) {
+				if (adapter == Shell.class) {
+					return getShell();
+				} else if (adapter == IWizard.class || adapter == MarketplaceWizard.class) {
+					return viewer.getWizard();
+				} else if (adapter == CatalogItem.class) {
+					return connector;
+				}
+				return null;
+			}
+		};
 	}
 
 	private void createInstallInfo(Composite parent) {
@@ -781,5 +830,11 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 			}
 		};
 		hookRecursively(exitControl, exitListener);
+	}
+
+	@Override
+	public void dispose() {
+
+		super.dispose();
 	}
 }

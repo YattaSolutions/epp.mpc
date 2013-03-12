@@ -29,6 +29,12 @@ class Messages extends NLS {
 
 	public static String MarketplaceDiscoveryStrategy_catalogCategory;
 
+	public static String MarketplaceDiscoveryStrategy_Error_during_query;
+
+	public static String MarketplaceDiscoveryStrategy_Error_getting_payment_data;
+
+	public static String MarketplaceDiscoveryStrategy_Error_resolving_payment_module;
+
 	public static String MarketplaceDiscoveryStrategy_findingInstalled;
 
 	public static String MarketplaceDiscoveryStrategy_loadingMarketplace;

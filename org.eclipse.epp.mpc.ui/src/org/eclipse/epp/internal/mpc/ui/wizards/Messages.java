@@ -33,6 +33,24 @@ class Messages extends NLS {
 
 	public static String CatalogSwitcher_retrieveMetaData;
 
+	public static String DefaultPaymentItemLabelProvider_Donation;
+
+	public static String DefaultPaymentItemLabelProvider_Owned;
+
+	public static String DefaultPaymentItemLabelProvider_Price_and_type;
+
+	public static String DefaultPaymentItemLabelProvider_Price_format;
+
+	public static String DefaultPaymentItemLabelProvider_Purchase;
+
+	public static String DefaultPaymentItemLabelProvider_Purchase_pending;
+
+	public static String DefaultPaymentItemLabelProvider_Refund;
+
+	public static String DefaultPaymentItemLabelProvider_Start_price;
+
+	public static String DefaultPaymentItemLabelProvider_Unsubscribe;
+
 	public static String DiscoveryItem_byProviderLicense;
 
 	public static String DiscoveryItem_cannotRenderImage_reason;
@@ -168,6 +186,20 @@ class Messages extends NLS {
 	public static String OverviewToolTip_learnMoreLink;
 
 	public static String OverviewToolTip_openUrlInBrowser;
+
+	public static String PaymentButtonController_Error_updating_label;
+
+	public static String PaymentButtonController_Failed_to_install;
+
+	public static String PaymentButtonController_PaymentModule_required_bodyText;
+
+	public static String PaymentButtonController_PaymentModule_required_shortDescription;
+
+	public static String PaymentButtonController_PaymentModule_required_Title;
+
+	public static String PaymentButtonController_Updating_payment_module;
+
+	public static String PaymentButtonController_Updating_payment_status;
 
 	public static String ProvisioningJobListener_notificationTaskName;
 
