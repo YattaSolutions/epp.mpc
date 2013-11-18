@@ -51,6 +51,7 @@ import org.eclipse.epp.internal.mpc.ui.operations.AbstractProvisioningOperation;
 import org.eclipse.epp.internal.mpc.ui.operations.FeatureDescriptor;
 import org.eclipse.epp.internal.mpc.ui.operations.ProfileChangeOperationComputer;
 import org.eclipse.epp.internal.mpc.ui.operations.ProfileChangeOperationComputer.OperationType;
+import org.eclipse.epp.internal.mpc.ui.wizards.MarketplaceUrlHandler.SolutionInstallationInfo;
 import org.eclipse.epp.internal.mpc.ui.wizards.SelectionModel.CatalogItemEntry;
 import org.eclipse.epp.internal.mpc.ui.wizards.SelectionModel.FeatureEntry;
 import org.eclipse.epp.mpc.core.payment.PaymentService;
@@ -756,8 +757,15 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 		return key;
 	}
 
-	public static void resumeWizard(Display display, Object state, boolean proceedWithInstall) {
+	public static void resumeWizard(Display display, Object state, boolean proceedWithInstall) { //FIXME proceedWithInstall doesn't work anymore!?
 		String catalogUrl = (String) state;
+		if (proceedWithInstall) {
+			SolutionInstallationInfo installInfo = MarketplaceUrlHandler.createSolutionInstallInfo(catalogUrl);
+			if (installInfo != null) {
+				MarketplaceUrlHandler.triggerInstall(installInfo);
+				return;
+			}
+		}
 		CatalogDescriptor descriptor = catalogUrl == null ? null : CatalogRegistry.getInstance().findCatalogDescriptor(
 				catalogUrl);
 		final MarketplaceWizardCommand command = new MarketplaceWizardCommand();
