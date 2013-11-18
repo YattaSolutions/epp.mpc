@@ -32,6 +32,8 @@ import org.eclipse.epp.mpc.core.payment.PaymentService;
 import org.eclipse.epp.mpc.core.payment.PaymentServiceListener;
 import org.eclipse.epp.mpc.core.payment.PaymentTransaction;
 import org.eclipse.equinox.internal.p2.discovery.model.CatalogItem;
+import org.eclipse.equinox.internal.p2.discovery.model.Icon;
+import org.eclipse.equinox.internal.p2.ui.discovery.wizards.DiscoveryResources;
 import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.jface.operation.IRunnableContext;
 import org.eclipse.jface.operation.IRunnableWithProgress;
@@ -91,14 +93,18 @@ final class PaymentButtonController {
 
 	private final IAdaptable contextAdapter;
 
+	private final DiscoveryResources resources;
+
 	private UpdateListener updateListener;
 
 	private boolean runningDiscovery;
 
-	PaymentButtonController(PaymentService paymentService, DiscoveryItem<?> item, Button button,
+	PaymentButtonController(PaymentService paymentService, DiscoveryItem<?> item, DiscoveryResources resources,
+			Button button,
 			IRunnableContext runnableContext, IAdaptable contextAdapter) {
 		this.paymentService = paymentService;
 		this.item = item;
+		this.resources = resources;
 		this.button = button;
 		this.runnableContext = runnableContext;
 		this.contextAdapter = contextAdapter;
@@ -252,40 +258,45 @@ final class PaymentButtonController {
 		if (paymentItem != null) {
 			buttonText = DefaultPaymentItemLabelProvider.getAlternativeActionLabel(paymentItem, paymentModule);
 		}
-		if (paymentModule instanceof IAdaptable) {
-			IAdaptable adaptable = (IAdaptable) paymentModule;
-			labelProvider = (ILabelProvider) adaptable.getAdapter(ILabelProvider.class);
-			if (labelProvider != null) {
-				try {
+		try {
+			if (paymentModule instanceof IAdaptable) {
+				IAdaptable adaptable = (IAdaptable) paymentModule;
+				labelProvider = (ILabelProvider) adaptable.getAdapter(ILabelProvider.class);
+				if (labelProvider != null) {
 					String text = buttonText;
 					if (text == null) {
-						text = labelProvider.getText(paymentItem);
+						text = labelProvider.getText(paymentItem);//FIXME what if this returns null?
 					}
 					buttonIcon = labelProvider.getImage(paymentItem);
 
 					//update the text too, now that we are sure this provider doesn't cause a problem
 					buttonText = text;
-				} catch (Exception ex) {
-					StatusManager.getManager().handle(
-							new Status(IStatus.ERROR, MarketplaceClientUi.BUNDLE_ID,
-									Messages.PaymentButtonController_Error_updating_label, ex),
-									StatusManager.LOG);
-					labelProvider = null;
+				}
+			} else if (connector.getDiscoveredPaymentConnector() != null) {
+				PaymentDiscoveryModule data = (PaymentDiscoveryModule) connector.getDiscoveredPaymentConnector()
+						.getData();
+				String imageUrl = data.getImage();
+				if (imageUrl != null) {
+					Icon icon = new Icon();
+					// don't know the size
+					icon.setImage32(imageUrl);
+					buttonIcon = resources.getIconImage(connector.getSource(), connector.getIcon(), 32, false);
 				}
 			}
-		} else if (connector.getDiscoveredPaymentConnector() != null) {
-			PaymentDiscoveryModule data = (PaymentDiscoveryModule) connector.getDiscoveredPaymentConnector().getData();
-			String image = data.getImage();
-			if (image != null) {
-
-			}
+		} catch (Exception ex) {
+			StatusManager.getManager().handle(
+					new Status(IStatus.ERROR, MarketplaceClientUi.BUNDLE_ID,
+							Messages.PaymentButtonController_Error_updating_label, ex), StatusManager.LOG);
+			labelProvider = null;
 		}
-		if (labelProvider == null) {
+		if (labelProvider == null || buttonText == null) {
 			labelProvider = new DefaultPaymentItemLabelProvider();
 			if (buttonText == null) {
 				buttonText = labelProvider.getText(paymentItem);
 			}
-			buttonIcon = labelProvider.getImage(paymentItem);
+			if (buttonIcon == null) {
+				buttonIcon = labelProvider.getImage(paymentItem);
+			}
 		}
 		String oldText = button.getText();
 		Image oldIcon = button.getImage();

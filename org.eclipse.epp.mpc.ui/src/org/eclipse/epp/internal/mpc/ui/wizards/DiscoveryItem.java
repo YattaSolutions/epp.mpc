@@ -366,7 +366,8 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 		.minSize(56, SWT.DEFAULT)
 		.grab(true, true)
 		.applyTo(purchaseButton);
-		new PaymentButtonController(this.viewer.getWizard().getPaymentService(), this, purchaseButton, this.viewer.getWizard()
+		new PaymentButtonController(this.viewer.getWizard().getPaymentService(), this, resources, purchaseButton,
+				this.viewer.getWizard()
 				.getContainer(), getPurchaseContext());
 	}
 
