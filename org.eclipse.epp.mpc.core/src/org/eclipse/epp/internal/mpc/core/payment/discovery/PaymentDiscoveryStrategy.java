@@ -10,6 +10,7 @@
  *******************************************************************************/
 package org.eclipse.epp.internal.mpc.core.payment.discovery;
 
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
@@ -69,7 +70,7 @@ public class PaymentDiscoveryStrategy extends AbstractDiscoveryStrategy {
 		PaymentDiscoveryRemoteService remoteService = new PaymentDiscoveryRemoteService();
 		remoteService.setBaseUrl(baseUrl);
 
-		PaymentDiscoveryResult result = remoteService.processRequest("modules.xml", monitor);//FIXME //$NON-NLS-1$
+		PaymentDiscoveryResult result = remoteService.processRequest(getRequestPath(), monitor);//FIXME
 		PaymentDiscoveryPrice price = result.getPrice();
 
 		CatalogCategory category = new CatalogCategory();
@@ -80,11 +81,18 @@ public class PaymentDiscoveryStrategy extends AbstractDiscoveryStrategy {
 		List<PaymentDiscoveryModule> modules = result.getModules();
 		List<CatalogItem> items = getItems();
 		for (PaymentDiscoveryModule module : modules) {
-			module.setPrice(price);
+			String connectorSiteUrl;
+			try {
+				connectorSiteUrl = resolveDiscoveryUrl(module.getUrl());
+			} catch (MalformedURLException e) {
+				//TODO log
+				continue;
+			}
 
+			module.setPrice(price);
 			CatalogItem catalogItem = new CatalogItem();
 			catalogItem.setId(module.getId());
-			catalogItem.setSiteUrl(module.getUrl());
+			catalogItem.setSiteUrl(connectorSiteUrl);
 			catalogItem.setName(module.getName());
 			catalogItem.setProvider(module.getProvider());
 			catalogItem.setData(module);
@@ -92,6 +100,21 @@ public class PaymentDiscoveryStrategy extends AbstractDiscoveryStrategy {
 			catalogItem.setInstallableUnits(module.getIus());
 			items.add(catalogItem);
 		}
+	}
+
+	private String resolveDiscoveryUrl(String relativeUrl) throws MalformedURLException {
+		String url;
+		if (relativeUrl.startsWith("http://")) {
+			url = relativeUrl;
+		} else {
+			String path = getRequestPath();
+			if (!path.endsWith("/")) {
+				path += "/";
+			}
+			URL baseUrl = new URL(getBaseUrl(), path);
+			url = new URL(baseUrl, relativeUrl).toExternalForm();
+		}
+		return url;
 	}
 
 	private static class PaymentDiscoveryRemoteService extends RemoteService<PaymentDiscoveryResult> {
