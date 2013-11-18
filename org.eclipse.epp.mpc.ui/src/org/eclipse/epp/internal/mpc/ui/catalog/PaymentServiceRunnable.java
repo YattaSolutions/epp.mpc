@@ -87,6 +87,9 @@ class PaymentServiceRunnable implements Runnable {
 	}
 
 	private IStatus discoverConnector() {
+		if (catalogItem.getDiscoveredPaymentConnector() != null) {
+			return Status.OK_STATUS;
+		}
 		try {
 			CatalogItem discoveredConnector = discoveryService.discoverConnectors(catalogItem.getMarketplaceUrl(),
 					catalogItem.getId(), monitor);
