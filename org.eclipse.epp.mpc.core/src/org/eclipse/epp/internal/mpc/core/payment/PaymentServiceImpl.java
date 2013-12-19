@@ -142,7 +142,7 @@ public class PaymentServiceImpl implements PaymentService {
 					resolveErrors.add(error);
 				}
 			}
-			if (resolveErrors != null) {
+			if (resolveErrors.getChildren().length > 0) {
 				MarketplaceClientCore.getLog().log(resolveErrors);
 			}
 			synchronized (this) {
