@@ -47,6 +47,8 @@ public class MarketplaceClientUiPlugin extends AbstractUIPlugin {
 
 	public static final String ITEM_ICON_SHARE = "ITEM_ICON_SHARE"; //$NON-NLS-1$
 
+	public static final String ITEM_ICON_CART = "ITEM_ICON_CART"; //$NON-NLS-1$
+
 	private static MarketplaceClientUiPlugin instance;
 
 	public MarketplaceClientUiPlugin() {
@@ -85,6 +87,7 @@ public class MarketplaceClientUiPlugin extends AbstractUIPlugin {
 				imageDescriptorFromPlugin(getBundle().getSymbolicName(), "icons/news_update.gif")); //$NON-NLS-1$
 		imageRegistry.put(ITEM_ICON_STAR, imageDescriptorFromPlugin(getBundle().getSymbolicName(), "icons/star.png")); //$NON-NLS-1$
 		imageRegistry.put(ITEM_ICON_SHARE, imageDescriptorFromPlugin(getBundle().getSymbolicName(), "icons/share.png")); //$NON-NLS-1$
+		imageRegistry.put(ITEM_ICON_CART, imageDescriptorFromPlugin(getBundle().getSymbolicName(), "icons/cart.png")); //$NON-NLS-1$
 		return imageRegistry;
 	}
 }

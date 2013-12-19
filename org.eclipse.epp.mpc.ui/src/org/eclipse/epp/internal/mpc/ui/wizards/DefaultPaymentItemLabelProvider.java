@@ -13,11 +13,13 @@ package org.eclipse.epp.internal.mpc.ui.wizards;
 import java.text.MessageFormat;
 import java.util.List;
 
+import org.eclipse.epp.internal.mpc.ui.MarketplaceClientUiPlugin;
 import org.eclipse.epp.mpc.core.payment.PaymentItem;
 import org.eclipse.epp.mpc.core.payment.PaymentModule;
 import org.eclipse.epp.mpc.core.payment.PaymentTransaction;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.osgi.util.NLS;
+import org.eclipse.swt.graphics.Image;
 
 public class DefaultPaymentItemLabelProvider extends LabelProvider {
 
@@ -37,6 +39,13 @@ public class DefaultPaymentItemLabelProvider extends LabelProvider {
 			}
 		}
 		return Messages.DefaultPaymentItemLabelProvider_Purchase;
+	}
+
+	@Override
+	public Image getImage(Object element) {
+		return MarketplaceClientUiPlugin.getInstance()
+				.getImageRegistry()
+				.get(MarketplaceClientUiPlugin.ITEM_ICON_CART);
 	}
 
 	protected String getPrice(PaymentItem paymentItem) {
