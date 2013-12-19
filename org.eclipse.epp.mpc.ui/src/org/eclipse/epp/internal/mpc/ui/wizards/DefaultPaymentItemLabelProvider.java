@@ -44,7 +44,7 @@ public class DefaultPaymentItemLabelProvider extends LabelProvider {
 		if (paymentItem.getPurchaseType() != null) {
 			String purchaseTypeLabel = paymentItem.getPurchaseType().getLabel();
 			if (purchaseTypeLabel != null) {
-				price = MessageFormat.format(Messages.DefaultPaymentItemLabelProvider_Price_and_type, price, purchaseTypeLabel);
+				//price = MessageFormat.format(Messages.DefaultPaymentItemLabelProvider_Price_and_type, price, purchaseTypeLabel);
 			}
 		}
 		return price;
