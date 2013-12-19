@@ -3,4 +3,10 @@
 <plugin>
    <extension-point id="paymentModules" name="Payment Modules" schema="schema/paymentModules.exsd"/>
    <extension-point id="paymentDiscovery" name="Payment Discovery Locations (internal only)" schema="schema/paymentDiscovery.exsd"/>
+   <extension
+         point="org.eclipse.epp.mpc.core.paymentDiscovery">
+      <paymentDiscovery
+            url="https://ymp-dev.yatta.de/rest">
+      </paymentDiscovery>
+   </extension>
 </plugin>
