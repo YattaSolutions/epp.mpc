@@ -157,9 +157,9 @@ public class PaymentDiscoveryInstallOperation extends DiscoveryInstallOperation 
 			IProgressMonitor monitor)
 					throws CoreException {
 		monitor = SubMonitor.convert(monitor, Messages.PaymentDiscoveryInstallOperation_Installing_connectors, 100);
-		final String originalPolicy = System.getProperty(PROP_UNSIGNED_POLICY);
+		//final String originalPolicy = System.getProperty(PROP_UNSIGNED_POLICY);
 		try {
-			System.setProperty(PROP_UNSIGNED_POLICY, "fail");//$NON-NLS-1$
+			//System.setProperty(PROP_UNSIGNED_POLICY, "fail");//$NON-NLS-1$
 			IStatus result = job.runModal(monitor);
 			if (result.getSeverity() > IStatus.WARNING) {
 				if (result.getMessage().contains("CheckTrust")) { //$NON-NLS-1$
@@ -195,11 +195,11 @@ public class PaymentDiscoveryInstallOperation extends DiscoveryInstallOperation 
 		} catch (InterruptedException e) {
 			throw new OperationCanceledException();
 		} finally {
-			if (originalPolicy == null) {
-				System.getProperties().remove(PROP_UNSIGNED_POLICY);
-			} else {
-				System.setProperty(PROP_UNSIGNED_POLICY, originalPolicy);
-			}
+//			if (originalPolicy == null) {
+//				System.getProperties().remove(PROP_UNSIGNED_POLICY);
+//			} else {
+//				System.setProperty(PROP_UNSIGNED_POLICY, originalPolicy);
+//			}
 		}
 	}
 
