@@ -35,18 +35,21 @@ import org.eclipse.equinox.internal.p2.discovery.model.CatalogItem;
 import org.eclipse.equinox.internal.p2.discovery.model.Icon;
 import org.eclipse.equinox.internal.p2.ui.discovery.wizards.DiscoveryResources;
 import org.eclipse.jface.dialogs.TitleAreaDialog;
+import org.eclipse.jface.layout.GridLayoutFactory;
 import org.eclipse.jface.operation.IRunnableContext;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.viewers.ILabelProvider;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.SWTException;
+import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
@@ -384,17 +387,24 @@ final class PaymentButtonController {
 			protected Control createDialogArea(Composite parent) {
 				Composite container = (Composite) super.createDialogArea(parent);
 
+				GridLayoutFactory.swtDefaults().applyTo(container);
+
 				setTitle(Messages.PaymentButtonController_PaymentModule_required_Title);
 				setMessage(Messages.PaymentButtonController_PaymentModule_required_shortDescription);
 
 				//TODO preliminary dialog - waiting for final design
-				StyledText label = new StyledText(container, SWT.READ_ONLY | SWT.WRAP | SWT.MULTI);
+				StyledText label = new StyledText(container, SWT.READ_ONLY | SWT.WRAP);
+				label.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, true, true, 1, 1));
 				label.setEditable(false);
+				label.setEnabled(false);
 				label.setCursor(parent.getDisplay().getSystemCursor(SWT.CURSOR_ARROW));
-
 				String text = Messages.PaymentButtonController_PaymentModule_required_bodyText;
 				text = MessageFormat.format(text, purchasedItem, paymentProvider);
+				int firstLine = text.indexOf("\n"); //$NON-NLS-1$
 				label.setText(text);
+				label.setStyleRange(new StyleRange(0, firstLine, null, null, SWT.BOLD));
+
+				container.setBackground(label.getBackground());
 				return container;
 			}
 		};
