@@ -11,6 +11,7 @@
 package org.eclipse.epp.internal.mpc.ui.wizards;
 
 import org.eclipse.epp.internal.mpc.ui.catalog.MarketplaceNodeCatalogItem;
+import org.eclipse.epp.mpc.core.payment.PaymentItem;
 import org.eclipse.equinox.internal.p2.discovery.model.CatalogItem;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
@@ -18,7 +19,7 @@ import org.eclipse.swt.widgets.Button;
 
 /**
  * A controller that controls the multi-state install/uninstall button
- * 
+ *
  * @author David Green
  */
 @SuppressWarnings("rawtypes")
@@ -186,7 +187,8 @@ class ItemButtonController {
 	}
 
 	private void updateAppearance() {
-		button.setText(buttonState.label);
+		ButtonState state = buttonState;
+		button.setText(getLabel(state));
 		button.setEnabled(!buttonState.disabled);
 		if (secondaryButton != null) {
 			secondaryButton.setText(secondaryButtonState.label);
@@ -195,6 +197,21 @@ class ItemButtonController {
 		// button image? Due to platform limitations we can't set the button color
 
 		item.layout(true, true);
+	}
+
+	private String getLabel(ButtonState state) {
+		if (state == ButtonState.INSTALL) {
+			MarketplaceNodeCatalogItem catalogItem = (MarketplaceNodeCatalogItem) item.getData();
+			PaymentItem paymentItem = catalogItem.getPaymentItem();
+			if (paymentItem != null) {
+				if (!paymentItem.isOwned()) {
+					return "Try";
+				}
+			} else if (catalogItem.getDiscoveredPaymentConnector() != null) {
+				return "Try";
+			}
+		}
+		return state.label;
 	}
 
 	public void refresh() {
