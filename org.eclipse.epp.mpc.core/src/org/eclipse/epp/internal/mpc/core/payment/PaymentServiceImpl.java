@@ -18,19 +18,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IConfigurationElement;
-import org.eclipse.core.runtime.IExtension;
-import org.eclipse.core.runtime.IExtensionPoint;
-import org.eclipse.core.runtime.IExtensionRegistry;
-import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IRegistryEventListener;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.ListenerList;
-import org.eclipse.core.runtime.MultiStatus;
-import org.eclipse.core.runtime.Platform;
-import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.SubMonitor;
+import org.eclipse.core.runtime.*;
 import org.eclipse.epp.internal.mpc.core.MarketplaceClientCore;
 import org.eclipse.epp.internal.mpc.core.payment.discovery.PaymentDiscoveryService;
 import org.eclipse.epp.internal.mpc.core.service.DefaultMarketplaceService;
@@ -120,11 +108,8 @@ public class PaymentServiceImpl implements PaymentService {
 		return null;
 	}
 
-	public PaymentModule getPaymentModule(String nodeId, IProgressMonitor monitor) throws CoreException {
-		PaymentModule paymentModule;
-		synchronized (this) {
-			paymentModule = paymentModuleCache.get(nodeId);
-		}
+	public synchronized PaymentModule getPaymentModule(String nodeId, IProgressMonitor monitor) throws CoreException {
+		PaymentModule paymentModule = paymentModuleCache.get(nodeId);
 		SubMonitor progress = SubMonitor.convert(monitor, paymentModules.size());
 		if (paymentModule == null && !paymentModuleCache.containsKey(nodeId)) {
 			MultiStatus resolveErrors = new MultiStatus(MarketplaceClientCore.BUNDLE_ID, 0, NLS.bind(
@@ -145,9 +130,7 @@ public class PaymentServiceImpl implements PaymentService {
 			if (resolveErrors.getChildren().length > 0) {
 				MarketplaceClientCore.getLog().log(resolveErrors);
 			}
-			synchronized (this) {
-				paymentModuleCache.put(nodeId, paymentModule);//also remember null result
-			}
+			paymentModuleCache.put(nodeId, paymentModule);
 		}
 		return paymentModule;
 	}
