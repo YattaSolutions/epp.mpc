@@ -34,6 +34,10 @@
 	<tycho.scmUrl>scm:git:https://git.eclipse.org/r/p/mpc/org.eclipse.epp.mpc.git</tycho.scmUrl>
   </properties>
   
+  <scm>
+     <connection>scm:git:git://git.eclipse.org/gitroot/mpc/org.eclipse.epp.mpc.git</connection>
+  </scm>
+
   <mailingLists>
     <mailingList>
       <name>Marketplace Client Mailing List</name>

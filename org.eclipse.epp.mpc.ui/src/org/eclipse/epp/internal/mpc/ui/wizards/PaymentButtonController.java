@@ -325,6 +325,10 @@ final class PaymentButtonController {
 		PaymentModule paymentModule = paymentItem == null ? null : paymentItem.getPaymentModule();
 		if (paymentItem != null && paymentModule != null) {
 			purchaseItem(paymentItem, paymentModule);
+		} else {
+			MarketplaceClientUi.error("Missing handler: " + paymentItem + "/" + paymentModule,
+					new NullPointerException());
+			System.out.println("oops");
 		}
 	}
 
@@ -344,20 +348,35 @@ final class PaymentButtonController {
 					runnableContext);
 			if (status.getSeverity() > IStatus.WARNING) {
 				//failed, just return - error has already been handled...
+				MarketplaceClientUi.error("Failed to install payment connector: " + status.getMessage(),
+						status.getException());
 				return;
 			}
 			//succeeded, clear discovery data
 			connector.setDiscoveredPaymentConnector(null);
+			try {
+				Thread.sleep(300);
+			} catch (InterruptedException e) {
+				//ignore
+			}
 			runnableContext.run(true, true, new IRunnableWithProgress() {
 
 				public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
 					try {
-						PaymentModule oldPaymentModule = getPaymentModule();
-						((PaymentServiceImpl) paymentService).refresh();
-						PaymentModule newPaymentModule = paymentService.getPaymentModule(connector.getId(), monitor);
-						if (newPaymentModule != oldPaymentModule) {
-							updatePaymentModule(oldPaymentModule, newPaymentModule);
-							updatePaymentInfo(newPaymentModule, monitor);
+						for (int i = 0; i < 5; i++) {
+							PaymentModule oldPaymentModule = getPaymentModule();
+							((PaymentServiceImpl) paymentService).refresh();
+							PaymentModule newPaymentModule = paymentService.getPaymentModule(connector.getId(), monitor);
+							if (newPaymentModule != oldPaymentModule) {
+								updatePaymentModule(oldPaymentModule, newPaymentModule);
+								updatePaymentInfo(newPaymentModule, monitor);
+								break;
+							}
+							try {
+								Thread.sleep(300);
+							} catch (InterruptedException e) {
+								//ignore
+							}
 						}
 					} catch (CoreException e) {
 						throw new InvocationTargetException(e);
@@ -372,6 +391,7 @@ final class PaymentButtonController {
 			StatusManager.getManager().handle(status, StatusManager.LOG | StatusManager.BLOCK | StatusManager.SHOW);
 		} catch (InterruptedException e) {
 			//cancelled, just ignore
+			System.out.println("cancelled");
 		} finally {
 			runningDiscovery = false;
 		}
@@ -388,13 +408,19 @@ final class PaymentButtonController {
 				Composite container = (Composite) super.createDialogArea(parent);
 
 				GridLayoutFactory.swtDefaults().applyTo(container);
+				GridData layoutData = (GridData) container.getLayoutData();
+				layoutData.widthHint = 430;
+				layoutData.heightHint = 130;
 
 				setTitle(Messages.PaymentButtonController_PaymentModule_required_Title);
 				setMessage(Messages.PaymentButtonController_PaymentModule_required_shortDescription);
 
 				//TODO preliminary dialog - waiting for final design
 				StyledText label = new StyledText(container, SWT.READ_ONLY | SWT.WRAP);
-				label.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, true, true, 1, 1));
+				layoutData = new GridData(SWT.LEFT, SWT.FILL, true, true, 1, 1);
+				layoutData.widthHint = 430;
+				layoutData.heightHint = 120;
+				label.setLayoutData(layoutData);
 				label.setEditable(false);
 				label.setEnabled(false);
 				label.setCursor(parent.getDisplay().getSystemCursor(SWT.CURSOR_ARROW));
