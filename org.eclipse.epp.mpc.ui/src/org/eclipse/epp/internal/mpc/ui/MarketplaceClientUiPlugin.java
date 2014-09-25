@@ -7,16 +7,19 @@
  *
  * Contributors:
  * 	The Eclipse Foundation - initial API and implementation
+ * 	Yatta Solutions - bug 432803: public API
  *******************************************************************************/
 package org.eclipse.epp.internal.mpc.ui;
 
+import org.eclipse.epp.mpc.ui.IMarketplaceClientService;
 import org.eclipse.jface.resource.ImageRegistry;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
+import org.osgi.util.tracker.ServiceTracker;
 
 /**
  * bundle activator. Prefer {@link MarketplaceClientUi} where possible.
- * 
+ *
  * @author David Green
  */
 public class MarketplaceClientUiPlugin extends AbstractUIPlugin {
@@ -51,6 +54,8 @@ public class MarketplaceClientUiPlugin extends AbstractUIPlugin {
 
 	private static MarketplaceClientUiPlugin instance;
 
+	private ServiceTracker<IMarketplaceClientService, IMarketplaceClientService> clientServiceTracker;
+
 	public MarketplaceClientUiPlugin() {
 	}
 
@@ -58,10 +63,15 @@ public class MarketplaceClientUiPlugin extends AbstractUIPlugin {
 	public void start(BundleContext context) throws Exception {
 		instance = this;
 		super.start(context);
+		clientServiceTracker = new ServiceTracker<IMarketplaceClientService, IMarketplaceClientService>(context,
+				IMarketplaceClientService.class, null);
+		clientServiceTracker.open();
 	}
 
 	@Override
 	public void stop(BundleContext context) throws Exception {
+		clientServiceTracker.close();
+		clientServiceTracker = null;
 		super.stop(context);
 		instance = null;
 	}
@@ -89,5 +99,9 @@ public class MarketplaceClientUiPlugin extends AbstractUIPlugin {
 		imageRegistry.put(ITEM_ICON_SHARE, imageDescriptorFromPlugin(getBundle().getSymbolicName(), "icons/share.png")); //$NON-NLS-1$
 		imageRegistry.put(ITEM_ICON_CART, imageDescriptorFromPlugin(getBundle().getSymbolicName(), "icons/cart.png")); //$NON-NLS-1$
 		return imageRegistry;
+	}
+
+	public IMarketplaceClientService getClientService() {
+		return clientServiceTracker == null ? null : clientServiceTracker.getService();
 	}
 }

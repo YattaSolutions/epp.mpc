@@ -18,16 +18,29 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.eclipse.core.runtime.*;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IConfigurationElement;
+import org.eclipse.core.runtime.IExtension;
+import org.eclipse.core.runtime.IExtensionPoint;
+import org.eclipse.core.runtime.IExtensionRegistry;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IRegistryEventListener;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.ListenerList;
+import org.eclipse.core.runtime.MultiStatus;
+import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.epp.internal.mpc.core.MarketplaceClientCore;
 import org.eclipse.epp.internal.mpc.core.payment.discovery.PaymentDiscoveryService;
 import org.eclipse.epp.internal.mpc.core.service.DefaultMarketplaceService;
-import org.eclipse.epp.internal.mpc.core.service.Ius;
-import org.eclipse.epp.internal.mpc.core.service.MarketplaceService;
 import org.eclipse.epp.internal.mpc.core.service.Node;
+import org.eclipse.epp.mpc.core.model.IIus;
+import org.eclipse.epp.mpc.core.model.INode;
 import org.eclipse.epp.mpc.core.payment.PaymentModule;
 import org.eclipse.epp.mpc.core.payment.PaymentService;
 import org.eclipse.epp.mpc.core.payment.PaymentServiceListener;
+import org.eclipse.epp.mpc.core.service.IMarketplaceService;
 import org.eclipse.osgi.util.NLS;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.FrameworkUtil;
@@ -49,7 +62,8 @@ public class PaymentServiceImpl implements PaymentService {
 			logSecurityIssue(e);
 		}
 	}
-	private final MarketplaceService marketplaceService;
+
+	private final IMarketplaceService marketplaceService;
 
 	private final PaymentDiscoveryService discoveryService;
 
@@ -63,7 +77,7 @@ public class PaymentServiceImpl implements PaymentService {
 
 	private ListenerList paymentServiceListeners;
 
-	public PaymentServiceImpl(MarketplaceService marketplaceService, String catalogUrl) {
+	public PaymentServiceImpl(IMarketplaceService marketplaceService, String catalogUrl) {
 		this.marketplaceService = marketplaceService;
 		this.catalogUrl = catalogUrl;
 		this.discoveryService = new PaymentDiscoveryService();
@@ -220,14 +234,13 @@ public class PaymentServiceImpl implements PaymentService {
 		}
 	}
 
-	protected Node getNode(String nodeId, IProgressMonitor monitor) throws CoreException {
+	protected INode getNode(String nodeId, IProgressMonitor monitor) throws CoreException {
 		Node node = new Node();
 		node.setId(nodeId);
-		node = marketplaceService.getNode(node, monitor);
-		return node;
+		return marketplaceService.getNode(node, monitor);
 	}
 
-	public MarketplaceService getMarketplaceService() {
+	public IMarketplaceService getMarketplaceService() {
 		return marketplaceService;
 	}
 
@@ -333,8 +346,8 @@ public class PaymentServiceImpl implements PaymentService {
 		}
 
 		private boolean matchesIuFilter(String nodeId, IProgressMonitor monitor) throws CoreException {
-			Node node = getNode(nodeId, monitor);
-			Ius ius = node == null ? null : node.getIus();
+			INode node = getNode(nodeId, monitor);
+			IIus ius = node == null ? null : node.getIus();
 			if (ius != null && !ius.getIu().isEmpty()) {
 				if (iuFilter == null) {
 					String filterText = configurationElement.getAttribute("filter"); //$NON-NLS-1$

@@ -6,7 +6,7 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *
  * Contributors:
- *     Yatta Solutions - initial API and implementation
+ *     Yatta Solutions - initial API and implementation, public API (bug 432803)
  *******************************************************************************/
 package org.eclipse.epp.internal.mpc.ui.wizards;
 
@@ -19,6 +19,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.epp.internal.mpc.core.service.News;
 import org.eclipse.epp.internal.mpc.ui.MarketplaceClientUiPlugin;
+import org.eclipse.epp.mpc.core.model.INews;
 import org.eclipse.epp.mpc.ui.CatalogDescriptor;
 import org.eclipse.equinox.internal.p2.ui.discovery.util.WorkbenchUtil;
 import org.eclipse.jface.dialogs.IDialogConstants;
@@ -157,7 +158,7 @@ public class NewsViewer {
 		}
 	}
 
-	public void showNews(News news) {
+	public void showNews(INews news) {
 		final String url = news.getUrl();
 		if (url != null && url.length() > 0) {
 			showUrl(url);
@@ -200,7 +201,7 @@ public class NewsViewer {
 		}
 	}
 
-	public boolean isUpdated(News news) {
+	public boolean isUpdated(INews news) {
 		String url = news.getUrl();
 		if (url == null || url.length() == 0) {
 			return false;
@@ -214,7 +215,7 @@ public class NewsViewer {
 		return true;
 	}
 
-	private String computeNewsStamp(News news) {
+	private String computeNewsStamp(INews news) {
 		return NLS.bind("[{0}]{1}", news.getTimestamp(), news.getUrl()); //$NON-NLS-1$
 	}
 
@@ -285,8 +286,8 @@ public class NewsViewer {
 			if (current > 0) {
 				progress.worked(current);
 			}
-			int completeSince = 0;
-			while (!monitor.isCanceled() && !done && completeSince < 4) {
+			long lastUpdate = System.currentTimeMillis();
+			while (!monitor.isCanceled() && !done) {
 				int newCurrent, newTotal, newRemaining, worked;
 				synchronized (this) {
 					wait(200);
@@ -296,10 +297,18 @@ public class NewsViewer {
 
 					int oldRemaining = lastTotal - lastCurrent;
 					newRemaining = newTotal - newCurrent;
-					if (newRemaining == 0 && oldRemaining == 0) {
+
+					long now = System.currentTimeMillis();
+					long timeSinceLastUpdate = now - lastUpdate;
+
+					if (newCurrent != lastCurrent || newTotal != lastTotal) {
+						lastUpdate = now;
+					} else if ((newRemaining == 0 && oldRemaining == 0 && timeSinceLastUpdate >= 900)
+							|| timeSinceLastUpdate > 10000) {
 						//FIXME hack because completed event is not always coming
-						completeSince++;
+						break;
 					}
+
 					worked = oldRemaining - newRemaining;
 					if (worked <= 0) {
 						worked = 1;

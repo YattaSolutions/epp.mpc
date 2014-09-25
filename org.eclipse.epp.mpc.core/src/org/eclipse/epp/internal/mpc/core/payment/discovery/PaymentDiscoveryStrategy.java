@@ -23,6 +23,7 @@ import org.eclipse.epp.internal.mpc.core.payment.discovery.model.PaymentDiscover
 import org.eclipse.epp.internal.mpc.core.payment.discovery.model.PaymentDiscoveryPrice;
 import org.eclipse.epp.internal.mpc.core.payment.discovery.model.PaymentDiscoveryResult;
 import org.eclipse.epp.internal.mpc.core.payment.discovery.xml.PaymentDiscoveryResultContentHandler;
+import org.eclipse.epp.internal.mpc.core.service.MarketplaceUnmarshaller;
 import org.eclipse.epp.internal.mpc.core.service.RemoteService;
 import org.eclipse.epp.internal.mpc.core.service.xml.UnmarshalContentHandler;
 import org.eclipse.epp.internal.mpc.core.service.xml.Unmarshaller;
@@ -119,32 +120,22 @@ public class PaymentDiscoveryStrategy extends AbstractDiscoveryStrategy {
 
 	private static class PaymentDiscoveryRemoteService extends RemoteService<PaymentDiscoveryResult> {
 
+		private PaymentDiscoveryRemoteService() {
+
+			super(PaymentDiscoveryResult.class, new MarketplaceUnmarshaller() {
+				@Override
+				protected Unmarshaller createUnmarshaller() {
+					Map<String, UnmarshalContentHandler> handlers = new HashMap<String, UnmarshalContentHandler>();
+					handlers.put("modules", new PaymentDiscoveryResultContentHandler()); //$NON-NLS-1$
+					return new Unmarshaller(handlers);
+				}
+			});
+		}
+
+
 		@Override
 		public PaymentDiscoveryResult processRequest(String relativeUrl, IProgressMonitor monitor) throws CoreException {
 			return super.processRequest(relativeUrl, monitor);
-		}
-
-		@Override
-		protected PaymentDiscoveryResult processRequest(String baseUri, String relativePath, IProgressMonitor monitor)
-				throws CoreException {
-			Map<String, UnmarshalContentHandler> handlers = new HashMap<String, UnmarshalContentHandler>();
-			handlers.put("modules", new PaymentDiscoveryResultContentHandler()); //$NON-NLS-1$
-			final Unmarshaller unmarshaller = new Unmarshaller(handlers);
-
-			processRequest(baseUri, relativePath, unmarshaller, monitor);
-
-			Object model = unmarshaller.getModel();
-			if (model == null) {
-				// if we reach here this should never happen
-				throw new IllegalStateException();
-			} else {
-				try {
-					return (PaymentDiscoveryResult) model;
-				} catch (Exception e) {
-					String message = "";//TODO NLS.bind(Messages.DefaultMarketplaceService_unexpectedResponseContent, model.getClass().getSimpleName()); //$NON-NLS-1$
-					throw new CoreException(createErrorStatus(message, null));
-				}
-			}
 		}
 	}
 }

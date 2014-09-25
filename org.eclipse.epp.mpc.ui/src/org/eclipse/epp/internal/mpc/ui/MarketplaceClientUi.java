@@ -7,7 +7,7 @@
  *
  * Contributors:
  * 	The Eclipse Foundation - initial API and implementation
- *    Yatta Solutions - error handling (bug 374105)
+ *    Yatta Solutions - error handling (bug 374105), public API (bug 432803)
  *******************************************************************************/
 package org.eclipse.epp.internal.mpc.ui;
 
@@ -62,7 +62,11 @@ public class MarketplaceClientUi {
 
 	public static void error(String message, Throwable exception) {
 		if (message == null) {
-			message = NLS.bind(Messages.MarketplaceClientUi_unexpectedException_reason, exception.getMessage());
+			String exceptionMessage = exception.getMessage();
+			if (exceptionMessage == null) {
+				exceptionMessage = exception.getClass().getSimpleName();
+			}
+			message = NLS.bind(Messages.MarketplaceClientUi_unexpectedException_reason, exceptionMessage);
 		}
 		getLog().log(new Status(IStatus.ERROR, BUNDLE_ID, IStatus.ERROR, message, exception));
 	}
@@ -153,9 +157,9 @@ public class MarketplaceClientUi {
 	public static Map<String, IInstallableUnit> computeInstalledIUsById(IProgressMonitor monitor) {
 		Map<String, IInstallableUnit> iUs = new HashMap<String, IInstallableUnit>();
 		BundleContext bundleContext = MarketplaceClientUi.getBundleContext();
-		ServiceReference serviceReference = bundleContext.getServiceReference(IProvisioningAgent.SERVICE_NAME);
+		ServiceReference<IProvisioningAgent> serviceReference = bundleContext.getServiceReference(IProvisioningAgent.class);
 		if (serviceReference != null) {
-			IProvisioningAgent agent = (IProvisioningAgent) bundleContext.getService(serviceReference);
+			IProvisioningAgent agent = bundleContext.getService(serviceReference);
 			try {
 				IProfileRegistry profileRegistry = (IProfileRegistry) agent.getService(IProfileRegistry.SERVICE_NAME);
 				if (profileRegistry != null) {
@@ -179,9 +183,9 @@ public class MarketplaceClientUi {
 		Set<String> features = new HashSet<String>();
 
 		BundleContext bundleContext = MarketplaceClientUi.getBundleContext();
-		ServiceReference serviceReference = bundleContext.getServiceReference(IProvisioningAgent.SERVICE_NAME);
+		ServiceReference<IProvisioningAgent> serviceReference = bundleContext.getServiceReference(IProvisioningAgent.class);
 		if (serviceReference != null) {
-			IProvisioningAgent agent = (IProvisioningAgent) bundleContext.getService(serviceReference);
+			IProvisioningAgent agent = bundleContext.getService(serviceReference);
 			try {
 				IProfileRegistry profileRegistry = (IProfileRegistry) agent.getService(IProfileRegistry.SERVICE_NAME);
 				if (profileRegistry != null) {

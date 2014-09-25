@@ -42,6 +42,7 @@ import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
@@ -91,6 +92,7 @@ class OverviewToolTip extends ToolTip {
 	protected Composite createToolTipContentArea(Event event, final Composite parent) {
 		Shell shell = parent.getShell();
 		setData(Shell.class.getName(), shell);
+		DiscoveryItem.setWidgetId(shell, DiscoveryItem.WIDGET_ID_OVERVIEW);
 		GridLayoutFactory.fillDefaults().applyTo(parent);
 
 		Color backgroundColor = parent.getDisplay().getSystemColor(SWT.COLOR_WHITE);
@@ -221,6 +223,7 @@ class OverviewToolTip extends ToolTip {
 		}
 		if (hasLearnMoreLink) {
 			Link link = new Link(summaryContainer, SWT.NULL);
+			DiscoveryItem.setWidgetId(link, DiscoveryItem.WIDGET_ID_LEARNMORE);
 			GridDataFactory.fillDefaults().grab(false, false).align(SWT.BEGINNING, SWT.CENTER).applyTo(link);
 			link.setText(Messages.OverviewToolTip_learnMoreLink);
 			link.setBackground(backgroundColor);
@@ -291,7 +294,20 @@ class OverviewToolTip extends ToolTip {
 		int relativeX = titleAbsLocation.x - containerAbsLocation.x;
 		int relativeY = titleAbsLocation.y - containerAbsLocation.y;
 
-		relativeY += bounds.height + 3;
+		if (org.eclipse.jface.util.Util.isGtk()) {
+			//GTK sends MOUSE_EXIT on entering the tooltip shell, closing it (bug 423908)
+			//Workaround: open tooltip under cursor
+			GC gc = new GC(titleControl);
+			try {
+				gc.setFont(titleControl.getFont());
+				int height = gc.getFontMetrics().getHeight();
+				relativeY += bounds.height - height;
+			} finally {
+				gc.dispose();
+			}
+		} else {
+			relativeY += bounds.height + 3;
+		}
 		show(new Point(relativeX, relativeY));
 	}
 }

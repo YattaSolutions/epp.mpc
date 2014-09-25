@@ -7,6 +7,7 @@
  *
  * Contributors:
  * 	The Eclipse Foundation - initial API and implementation
+ * 	Yatta Solutions - bug 432803: public API
  *******************************************************************************/
 package org.eclipse.epp.internal.mpc.ui.catalog;
 
@@ -19,7 +20,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -32,12 +32,14 @@ import java.util.Set;
 
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.epp.internal.mpc.core.service.Node;
+import org.eclipse.epp.internal.mpc.core.util.URLUtil;
 import org.eclipse.epp.internal.mpc.ui.MarketplaceClientUi;
+import org.eclipse.epp.mpc.core.model.INode;
 
 /**
  * A means of knowing about how nodes map to IUs and visa versa. Can handle nodes from multiple marketplaces, and does a
  * best-effort job at persisting information across sessions.
- * 
+ *
  * @author David Green
  */
 public class MarketplaceInfo {
@@ -71,15 +73,15 @@ public class MarketplaceInfo {
 
 	/**
 	 * Calculate the known catalog nodes that are installed
-	 * 
+	 *
 	 * @param repositoryUrl
 	 *            the catalog url for which installed nodes should be computed
 	 * @param installedIus
 	 *            all of the currently installed IUs
 	 * @return a set of node ids, or an empty set if there are no known installed nodes
 	 */
-	public synchronized Set<Node> computeInstalledNodes(URL repositoryUrl, Set<String> installedIus) {
-		Set<Node> nodes = new HashSet<Node>();
+	public synchronized Set<INode> computeInstalledNodes(URL repositoryUrl, Set<String> installedIus) {
+		Set<INode> nodes = new HashSet<INode>();
 
 		String keyPrefix = computeUrlKey(repositoryUrl) + '#';
 		for (Map.Entry<String, List<String>> entry : nodeKeyToIU.entrySet()) {
@@ -98,28 +100,44 @@ public class MarketplaceInfo {
 	}
 
 	/**
-	 * compute if the given node is installed. The given node must be fully realized, including its
-	 * {@link Node#getIus() ius}.
-	 * 
+	 * Compute if the given node is installed. The given node must be fully realized, including its
+	 * {@link INode#getIus() ius}.
+	 * <p>
+	 * <i>NOTE: This method is kept for backwards compatibility only.</i><br />
+	 * It checks if the node has an update url and if that url is contained in the list of known repositories. Otherwise
+	 * it assumes that the node is <b>not</b> installed, regardless of installed features. Please use
+	 * {@link #computeInstalled(Set, INode)} instead to get a reliable answer.
+	 *
 	 * @param knownRepositories
+	 * @deprecated use {@link #computeInstalled(Set, INode)} instead
 	 */
-	public boolean computeInstalled(Set<String> installedFeatures, Set<URI> knownRepositories, Node node) {
+	@Deprecated
+	public boolean computeInstalled(Set<String> installedFeatures, Set<URI> knownRepositories, INode node) {
 		String updateurl = node.getUpdateurl();
 		if (updateurl == null) {
-			// can't be installed if there's no update site
+			// don't consider installed if there's no update site
 			return false;
 		}
-		// SECURITY: can't be installed if the repository is not known/trusted
-		try {
-			URI uri = new URL(updateurl).toURI();
-			if (!knownRepositories.contains(uri)) {
+		boolean installed = computeInstalled(installedFeatures, node);
+		if (installed && knownRepositories != null) {
+			// don't consider installed if the repository is not known/trusted
+			try {
+				URI uri = URLUtil.toURI(node.getUpdateurl());
+				if (!knownRepositories.contains(uri)) {
+					return false;
+				}
+			} catch (URISyntaxException e) {
 				return false;
 			}
-		} catch (MalformedURLException e) {
-			return false;
-		} catch (URISyntaxException e) {
-			return false;
 		}
+		return installed;
+	}
+
+	/**
+	 * Compute if the given node is installed. The given node must be fully realized, including its
+	 * {@link Node#getIus() ius}.
+	 */
+	public boolean computeInstalled(Set<String> installedFeatures, INode node) {
 		if (node.getIus() != null && !node.getIus().getIu().isEmpty()) {
 			List<String> ius = new ArrayList<String>(new HashSet<String>(node.getIus().getIu()));
 			return computeInstalled(installedFeatures, ius);
@@ -138,7 +156,7 @@ public class MarketplaceInfo {
 		return installCount > 0;
 	}
 
-	public synchronized void map(URL marketUrl, Node node) {
+	public synchronized void map(URL marketUrl, INode node) {
 		String itemKey = computeItemKey(marketUrl, node);
 		if (node.getIus() != null && !node.getIus().getIu().isEmpty()) {
 			List<String> ius = new ArrayList<String>(new HashSet<String>(node.getIus().getIu()));
@@ -171,7 +189,7 @@ public class MarketplaceInfo {
 		}
 	}
 
-	private String computeItemKey(URL marketUrl, Node item) {
+	private String computeItemKey(URL marketUrl, INode item) {
 		return computeUrlKey(marketUrl) + '#' + item.getId();
 	}
 
@@ -231,7 +249,7 @@ public class MarketplaceInfo {
 
 	/**
 	 * compute the registry file
-	 * 
+	 *
 	 * @return the registry file, or null if there's no persistent registry.
 	 */
 	private static final File computeRegistryFile() {

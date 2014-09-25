@@ -23,13 +23,15 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.epp.internal.mpc.core.util.TransportFactory;
+import org.eclipse.epp.internal.mpc.core.util.URLUtil;
 import org.eclipse.epp.internal.mpc.ui.MarketplaceClientUi;
+import org.eclipse.equinox.internal.p2.discovery.model.CatalogItem;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.osgi.util.NLS;
 
 /**
  * A runnable that downloads a resource from an URL
- * 
+ *
  * @author David Green
  */
 abstract class AbstractResourceRunnable implements IRunnableWithProgress, Callable<Object> {
@@ -38,10 +40,14 @@ abstract class AbstractResourceRunnable implements IRunnableWithProgress, Callab
 
 	protected String resourceUrl;
 
+	protected CatalogItem catalogItem;
+
 	private final IProgressMonitor cancellationMonitor;
 
-	public AbstractResourceRunnable(IProgressMonitor cancellationMonitor, ResourceProvider resourceProvider,
+	public AbstractResourceRunnable(IProgressMonitor cancellationMonitor, CatalogItem catalogItem,
+			ResourceProvider resourceProvider,
 			String resourceUrl) {
+		this.catalogItem = catalogItem;
 		this.cancellationMonitor = cancellationMonitor;
 		this.resourceProvider = resourceProvider;
 		this.resourceUrl = resourceUrl;
@@ -59,9 +65,9 @@ abstract class AbstractResourceRunnable implements IRunnableWithProgress, Callab
 
 	public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
 		try {
-			URL imageUrl = new URL(resourceUrl);
+			URL imageUrl = URLUtil.toURL(resourceUrl);
 
-			InputStream in = TransportFactory.instance().getTransport().stream(imageUrl.toURI(), monitor);
+			InputStream in = TransportFactory.createTransport().stream(imageUrl.toURI(), monitor);
 			try {
 				resourceProvider.putResource(resourceUrl, in);
 			} finally {
@@ -70,17 +76,24 @@ abstract class AbstractResourceRunnable implements IRunnableWithProgress, Callab
 				}
 			}
 		} catch (URISyntaxException e) {
-			MarketplaceClientUi.error(NLS.bind(Messages.AbstractResourceRunnable_badUri, resourceUrl), e);
+			MarketplaceClientUi.error(
+					NLS.bind(Messages.AbstractResourceRunnable_badUri, new Object[] { catalogItem.getName(),
+							catalogItem.getId(), resourceUrl }), e);
 		} catch (FileNotFoundException e) {
-			//MarketplaceClientUi.error(NLS.bind(Messages.AbstractResourceRunnable_resourceNotFound, resourceUrl), e);
+			//MarketplaceClientUi.error(NLS.bind(Messages.AbstractResourceRunnable_resourceNotFound, new Object[] { catalogItem.getName(),
+			//catalogItem.getId(), resourceUrl }), e);
 		} catch (IOException e) {
 			if (e.getCause() instanceof OperationCanceledException) {
 				// canceled, nothing we want to do here
 			} else {
-				MarketplaceClientUi.error(e);
+				MarketplaceClientUi.error(
+						NLS.bind(Messages.AbstractResourceRunnable_downloadError, new Object[] { catalogItem.getName(),
+								catalogItem.getId(), resourceUrl }), e);
 			}
 		} catch (CoreException e) {
-			MarketplaceClientUi.error(e);
+			MarketplaceClientUi.error(
+					NLS.bind(Messages.AbstractResourceRunnable_downloadError, new Object[] { catalogItem.getName(),
+							catalogItem.getId(), resourceUrl }), e);
 		}
 		if (resourceProvider.containsResource(resourceUrl)) {
 			resourceRetrieved();

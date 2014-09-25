@@ -7,13 +7,18 @@
  *
  * Contributors:
  * 	The Eclipse Foundation - initial API and implementation
+ * 	Yatta Solutions - bug 432803: public API
  *******************************************************************************/
 package org.eclipse.epp.internal.mpc.ui.catalog;
 
 import java.net.URL;
+import java.util.EnumSet;
+import java.util.Set;
 
 import org.eclipse.epp.internal.mpc.core.service.Node;
 import org.eclipse.epp.mpc.core.payment.PaymentItem;
+import org.eclipse.epp.mpc.core.model.INode;
+import org.eclipse.epp.mpc.ui.Operation;
 import org.eclipse.equinox.internal.p2.discovery.model.CatalogItem;
 
 /**
@@ -30,8 +35,8 @@ public class MarketplaceNodeCatalogItem extends CatalogItem {
 	private CatalogItem discoveredPaymentConnector;
 
 	@Override
-	public Node getData() {
-		return (Node) super.getData();
+	public INode getData() {
+		return (INode) super.getData();
 	}
 
 	public URL getMarketplaceUrl() {
@@ -64,6 +69,32 @@ public class MarketplaceNodeCatalogItem extends CatalogItem {
 
 	public void setDiscoveredPaymentConnector(CatalogItem discoveredPaymentConnector) {
 		this.discoveredPaymentConnector = discoveredPaymentConnector;
+	}
+
+	public Set<Operation> getAvailableOperations() {
+		Set<Operation> available = EnumSet.noneOf(Operation.class);
+		MarketplaceNodeCatalogItem catalogItem = (MarketplaceNodeCatalogItem) getData();
+		if (!catalogItem.getInstallableUnits().isEmpty()) {
+			if (isInstalled()) {
+				available.add(Operation.UNINSTALL);
+				if (maybeUpdateAvailable()) {
+					available.add(Operation.UPDATE);
+				}
+			} else if (maybeAvailable()) {
+				available.add(Operation.INSTALL);
+			}
+		}
+		return available;
+	}
+
+	private boolean maybeAvailable() {
+		Boolean available = getAvailable();
+		return available == null || Boolean.TRUE.equals(available);
+	}
+
+	private boolean maybeUpdateAvailable() {
+		Boolean updateAvailable = getUpdateAvailable();
+		return updateAvailable == null || Boolean.TRUE.equals(updateAvailable);
 	}
 
 	@Override

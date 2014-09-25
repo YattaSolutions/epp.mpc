@@ -14,12 +14,18 @@ package org.eclipse.epp.internal.mpc.ui.wizards;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.wizard.IWizardPage;
 import org.eclipse.jface.wizard.WizardDialog;
+import org.eclipse.swt.SWT;
 import org.eclipse.swt.accessibility.Accessible;
 import org.eclipse.swt.accessibility.AccessibleAdapter;
 import org.eclipse.swt.accessibility.AccessibleEvent;
+import org.eclipse.swt.events.DisposeEvent;
+import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.IWorkbench;
+import org.eclipse.ui.IWorkbenchListener;
+import org.eclipse.ui.PlatformUI;
 
 public class MarketplaceWizardDialog extends WizardDialog {
 	private Button backButton;
@@ -27,7 +33,47 @@ public class MarketplaceWizardDialog extends WizardDialog {
 	private Button nextButton;
 
 	public MarketplaceWizardDialog(Shell parentShell, MarketplaceWizard newWizard) {
-		super(parentShell, newWizard);
+		//bug 424729 - make the wizard dialog modal
+		//don't pass on parentShell, so we get a new top-level shell with its own taskbar entry
+		//TODO is there some way to still get centering on the parentShell?
+		super(null, newWizard);
+		int shellStyle = getShellStyle();
+		int allModal = SWT.APPLICATION_MODAL | SWT.PRIMARY_MODAL | SWT.SYSTEM_MODAL;
+		shellStyle &= ~allModal;
+		shellStyle |= SWT.MODELESS;
+		setShellStyle(shellStyle);
+	}
+
+	@Override
+	protected void configureShell(Shell newShell) {
+		super.configureShell(newShell);
+		newShell.setData(this);//make jface dialog accessible for swtbot
+		new MarketplaceDropAdapter().installDropTarget(newShell);
+		final IWorkbenchListener workbenchListener = new IWorkbenchListener() {
+
+			public boolean preShutdown(IWorkbench workbench, boolean forced) {
+				Shell wizardShell = MarketplaceWizardDialog.this.getShell();
+				if (wizardShell != null && !wizardShell.isDisposed()) {
+					if (forced) {
+						wizardShell.close();
+					} else {
+						boolean closed = MarketplaceWizardDialog.this.close();
+						return closed;
+					}
+				}
+				return true;
+			}
+
+			public void postShutdown(IWorkbench workbench) {
+			}
+		};
+		PlatformUI.getWorkbench().addWorkbenchListener(workbenchListener);
+		newShell.addDisposeListener(new DisposeListener() {
+
+			public void widgetDisposed(DisposeEvent e) {
+				PlatformUI.getWorkbench().removeWorkbenchListener(workbenchListener);
+			}
+		});
 	}
 
 	@Override
@@ -70,7 +116,7 @@ public class MarketplaceWizardDialog extends WizardDialog {
 	}
 
 	@Override
-	protected MarketplaceWizard getWizard() {
+	public MarketplaceWizard getWizard() {
 		return (MarketplaceWizard) super.getWizard();
 	}
 

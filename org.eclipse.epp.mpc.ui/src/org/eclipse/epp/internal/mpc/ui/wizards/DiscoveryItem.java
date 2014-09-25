@@ -7,6 +7,7 @@
  *
  * Contributors:
  *     Tasktop Technologies - initial API and implementation
+ *     Yatta Solutions - bug 432803: public API
  *******************************************************************************/
 
 package org.eclipse.epp.internal.mpc.ui.wizards;
@@ -15,16 +16,20 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.text.MessageFormat;
 
-import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.epp.internal.mpc.core.service.Node;
 import org.eclipse.epp.internal.mpc.core.service.Tag;
 import org.eclipse.epp.internal.mpc.core.service.Tags;
+import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.epp.internal.mpc.core.util.TextUtil;
 import org.eclipse.epp.internal.mpc.ui.MarketplaceClientUi;
 import org.eclipse.epp.internal.mpc.ui.MarketplaceClientUiPlugin;
 import org.eclipse.epp.internal.mpc.ui.catalog.MarketplaceNodeCatalogItem;
 import org.eclipse.epp.internal.mpc.ui.util.Util;
 import org.eclipse.epp.mpc.core.payment.PaymentItem;
+import org.eclipse.epp.mpc.core.model.INode;
+import org.eclipse.epp.mpc.core.model.ITag;
+import org.eclipse.epp.mpc.core.model.ITags;
+import org.eclipse.epp.mpc.ui.Operation;
 import org.eclipse.equinox.internal.p2.discovery.AbstractCatalogSource;
 import org.eclipse.equinox.internal.p2.discovery.model.CatalogItem;
 import org.eclipse.equinox.internal.p2.discovery.model.Overview;
@@ -68,7 +73,6 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.ToolItem;
 import org.eclipse.swt.widgets.Widget;
 import org.eclipse.ui.browser.IWorkbenchBrowserSupport;
 
@@ -76,7 +80,6 @@ import org.eclipse.ui.browser.IWorkbenchBrowserSupport;
  * @author Steffen Pingel
  * @author David Green
  */
-@SuppressWarnings("unused")
 public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<T> implements PropertyChangeListener {
 
 	/**
@@ -150,6 +153,28 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 
 	private static final int MAX_IMAGE_WIDTH = 75;
 
+	public static final String WIDGET_ID_KEY = DiscoveryItem.class.getName() + "::part"; //$NON-NLS-1$
+
+	public static final String WIDGET_ID_NAME = "name"; //$NON-NLS-1$
+
+	public static final String WIDGET_ID_DESCRIPTION = "description"; //$NON-NLS-1$
+
+	public static final String WIDGET_ID_ICON = "description"; //$NON-NLS-1$
+
+	public static final String WIDGET_ID_PROVIDER = "provider"; //$NON-NLS-1$
+
+	public static final String WIDGET_ID_INSTALLS = "installs"; //$NON-NLS-1$
+
+	public static final String WIDGET_ID_TAGS = "tags"; //$NON-NLS-1$
+
+	public static final String WIDGET_ID_RATING = "rating"; //$NON-NLS-1$
+
+	public static final String WIDGET_ID_SHARE = "share"; //$NON-NLS-1$
+
+	public static final String WIDGET_ID_LEARNMORE = "learn more"; //$NON-NLS-1$
+
+	public static final String WIDGET_ID_OVERVIEW = "overview"; //$NON-NLS-1$
+
 	private Composite checkboxContainer;
 
 	private final CatalogItem connector;
@@ -158,15 +183,7 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 
 	private Label iconLabel;
 
-	private ToolItem infoButton;
-
 	private Label nameLabel;
-
-	private Control providerLabel;
-
-	private final IShellProvider shellProvider;
-
-	private ToolItem updateButton;
 
 	private final MarketplaceViewer viewer;
 
@@ -182,10 +199,22 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 
 	private ShareSolutionLink shareSolutionLink;
 
+	/**
+	 * @param shellProvider
+	 *            - not used
+	 * @deprecated use
+	 *             {@link #DiscoveryItem(Composite, int, DiscoveryResources, IMarketplaceWebBrowser, CatalogItem, MarketplaceViewer)}
+	 *             instead
+	 */
+	@Deprecated
 	public DiscoveryItem(Composite parent, int style, DiscoveryResources resources, IShellProvider shellProvider,
 			IMarketplaceWebBrowser browser, final T connector, MarketplaceViewer viewer) {
+		this(parent, style, resources, browser, connector, viewer);
+	}
+
+	public DiscoveryItem(Composite parent, int style, DiscoveryResources resources, IMarketplaceWebBrowser browser,
+			final T connector, MarketplaceViewer viewer) {
 		super(parent, style, resources, connector);
-		this.shellProvider = shellProvider;
 		this.browser = browser;
 		this.connector = connector;
 		this.viewer = viewer;
@@ -230,8 +259,13 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 		.applyTo(separator);
 	}
 
+	static void setWidgetId(Widget widget, String id) {
+		widget.setData(WIDGET_ID_KEY, id);
+	}
+
 	private void createDescription(Composite parent) {
 		description = createStyledTextLabel(parent);
+		setWidgetId(description, WIDGET_ID_DESCRIPTION);
 		GridDataFactory.fillDefaults()
 		.grab(true, false)
 		.indent(DESCRIPTION_MARGIN_LEFT, DESCRIPTION_MARGIN_TOP)
@@ -286,7 +320,9 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 	}
 
 	private void createNameLabel(Composite parent) {
-		nameLabel = new Label(parent, SWT.NONE);
+		nameLabel = new Label(parent, SWT.WRAP);
+		setWidgetId(nameLabel, WIDGET_ID_NAME);
+
 		GridDataFactory.fillDefaults()
 		.indent(DESCRIPTION_MARGIN_LEFT, 0)
 		.span(3, 1)
@@ -327,13 +363,14 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 			}
 		} else {
 			installInfoLink = createStyledTextLabel(composite);
+			setWidgetId(installInfoLink, WIDGET_ID_LEARNMORE);
 			installInfoLink.setToolTipText(Messages.DiscoveryItem_installInstructionsTooltip);
 			StyleRange link = appendLink(installInfoLink, Messages.DiscoveryItem_installInstructions, SWT.BOLD);
 			link.data = Messages.DiscoveryItem_installInstructions;
 			hookLinkListener(installInfoLink, new LinkListener() {
 				@Override
 				protected void selected(String href) {
-					browser.openUrl(((Node) connector.getData()).getUrl());
+					browser.openUrl(((INode) connector.getData()).getUrl());
 				}
 			});
 			GridDataFactory.swtDefaults().align(SWT.TRAIL, SWT.CENTER).grab(false, true).applyTo(installInfoLink);
@@ -398,14 +435,16 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 
 		Integer installsTotal = null;
 		Integer installsRecent = null;
-		if (connector.getData() instanceof Node) {
-			Node node = (Node) connector.getData();
+		if (connector.getData() instanceof INode) {
+			INode node = (INode) connector.getData();
 			installsTotal = node.getInstallsTotal();
 			installsRecent = node.getInstallsRecent();
 		}
 
 		if (installsTotal != null || installsRecent != null) {
 			StyledText installInfo = new StyledText(composite, SWT.READ_ONLY | SWT.SINGLE);
+			setWidgetId(installInfo, WIDGET_ID_INSTALLS);
+
 			String totalText = installsTotal == null ? Messages.DiscoveryItem_Unknown_Installs : MessageFormat.format(
 					Messages.DiscoveryItem_Compact_Number, installsTotal.intValue(), installsTotal * 0.001,
 					installsTotal * 0.000001);
@@ -432,8 +471,8 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 
 	private void createSocialButtons(Composite parent) {
 		Integer favorited = null;
-		if (connector.getData() instanceof Node) {
-			Node node = (Node) connector.getData();
+		if (connector.getData() instanceof INode) {
+			INode node = (INode) connector.getData();
 			favorited = node.getFavorited();
 		}
 		if (favorited == null || getCatalogItemUrl() == null) {
@@ -465,6 +504,8 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 		ratingsButton.setImage(MarketplaceClientUiPlugin.getInstance()
 				.getImageRegistry()
 				.get(MarketplaceClientUiPlugin.ITEM_ICON_STAR));
+		setWidgetId(ratingsButton, WIDGET_ID_RATING);
+
 		//Make width more or less fixed
 		int width = SWT.DEFAULT;
 		{
@@ -527,8 +568,8 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 
 	private String getCatalogItemUrl() {
 		Object data = connector.getData();
-		if (data instanceof Node) {
-			Node node = (Node) data;
+		if (data instanceof INode) {
+			INode node = (INode) data;
 			return node.getUrl();
 		}
 		return null;
@@ -574,12 +615,13 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 		GridLayoutFactory.fillDefaults().margins(0, 0).applyTo(checkboxContainer);
 
 		iconLabel = new Label(checkboxContainer, SWT.NONE);
+		setWidgetId(iconLabel, WIDGET_ID_ICON);
 		GridDataFactory.swtDefaults()
 		.align(SWT.CENTER, SWT.BEGINNING).grab(true, true)
 		.applyTo(iconLabel);
 		if (connector.getIcon() != null) {
 			try {
-				Image image = resources.getIconImage(connector.getSource(), connector.getIcon(), 32, false);
+				Image image = resources.getIconImage(connector.getSource(), connector.getIcon(), 64, true);
 				Rectangle bounds = image.getBounds();
 				if (bounds.width < 0.8 * MAX_IMAGE_WIDTH || bounds.width > MAX_IMAGE_WIDTH
 						|| bounds.height > MAX_IMAGE_HEIGHT) {
@@ -649,6 +691,8 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 
 	protected void createProviderLabel(Composite parent) {
 		Link providerLabel = new Link(parent, SWT.NONE);
+		setWidgetId(providerLabel, WIDGET_ID_PROVIDER);
+
 		GridDataFactory.fillDefaults()
 		.indent(DESCRIPTION_MARGIN_LEFT, DESCRIPTION_MARGIN_TOP)
 		.span(3, 1)
@@ -664,6 +708,8 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 
 	protected void createTagsLabel(Composite parent) {
 		tagsLink = createStyledTextLabel(parent);
+		setWidgetId(tagsLink, WIDGET_ID_TAGS);
+
 		tagsLink.setEditable(false);
 		GridDataFactory.fillDefaults()
 		.indent(DESCRIPTION_MARGIN_LEFT, TAGS_MARGIN_TOP)
@@ -672,11 +718,11 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 		.grab(true, false)
 		.applyTo(tagsLink);
 
-		Tags tags = ((Node) connector.getData()).getTags();
+		ITags tags = ((INode) connector.getData()).getTags();
 		if (tags == null) {
 			return;
 		}
-		for (Tag tag : tags.getTags()) {
+		for (ITag tag : tags.getTags()) {
 			String tagName = tag.getName();
 			appendLink(tagsLink, tagName, SWT.NORMAL).data = tagName;
 			tagsLink.append(" "); //$NON-NLS-1$
@@ -699,6 +745,14 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 				&& connector.getOverview().getSummary().length() > 0;
 	}
 
+	/**
+	 * @deprecated use {@link #maybeModifySelection(Operation)}
+	 */
+	@Deprecated
+	protected boolean maybeModifySelection(org.eclipse.epp.internal.mpc.ui.wizards.Operation operation) {
+		return maybeModifySelection(operation.getOperation());
+	}
+
 	protected boolean maybeModifySelection(Operation operation) {
 		viewer.modifySelection(connector, operation);
 		return true;
@@ -709,8 +763,16 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 		return getData().isSelected();
 	}
 
-	public Operation getOperation() {
-		return viewer.getSelectionModel().getOperation(getData());
+	/**
+	 * @deprecated use {@link #getSelectedOperation()} instead
+	 */
+	@Deprecated
+	public org.eclipse.epp.internal.mpc.ui.wizards.Operation getOperation() {
+		return org.eclipse.epp.internal.mpc.ui.wizards.Operation.map(getSelectedOperation());
+	}
+
+	public Operation getSelectedOperation() {
+		return viewer.getSelectionModel().getSelectedOperation(getData());
 	}
 
 	public void propertyChange(PropertyChangeEvent evt) {
@@ -718,7 +780,7 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 			getDisplay().asyncExec(new Runnable() {
 				public void run() {
 					if (!isDisposed()) {
-						refresh();
+						refresh(true);
 					}
 				}
 			});
@@ -727,6 +789,10 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 
 	@Override
 	protected void refresh() {
+		refresh(false);
+	}
+
+	protected void refresh(boolean updateState) {
 		Color foreground = getForeground();
 
 		nameLabel.setForeground(foreground);
@@ -734,7 +800,7 @@ public class DiscoveryItem<T extends CatalogItem> extends AbstractDiscoveryItem<
 		if (installInfoLink != null) {
 			installInfoLink.setForeground(foreground);
 		}
-		if (buttonController != null) {
+		if (updateState && buttonController != null) {
 			buttonController.refresh();
 		}
 	}

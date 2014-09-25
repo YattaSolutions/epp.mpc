@@ -30,10 +30,10 @@ import java.security.cert.CertificateExpiredException;
 import java.security.cert.CertificateNotYetValidException;
 import java.text.MessageFormat;
 
+import org.eclipse.core.internal.runtime.DevClassPathHelper;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.epp.internal.mpc.core.MarketplaceClientCorePlugin;
-import org.eclipse.osgi.internal.baseadaptor.DevClassPathHelper;
 import org.eclipse.osgi.internal.service.security.KeyStoreTrustEngine;
 import org.eclipse.osgi.service.security.TrustEngine;
 import org.eclipse.osgi.signedcontent.InvalidContentException;
@@ -350,7 +350,8 @@ final class SecurityHelper {
 						keystoreFile.getAbsolutePath()));
 			}
 
-			TrustEngine te = new KeyStoreTrustEngine(keystoreFile.getAbsolutePath(), "JKS", pass, "PaymentTrustStore"); //$NON-NLS-1$ //$NON-NLS-2$
+			TrustEngine te = new KeyStoreTrustEngine(keystoreFile.getAbsolutePath(),
+					"JKS", pass, "PaymentTrustStore", null); //$NON-NLS-1$ //$NON-NLS-2$
 			try {
 				te.getAliases();//load the trust store from file
 			} catch (GeneralSecurityException e) {

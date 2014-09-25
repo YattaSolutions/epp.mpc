@@ -7,7 +7,7 @@
  *
  * Contributors:
  * 	The Eclipse Foundation - initial API and implementation
- *  Yatta Solutions - news (bug 401721), payment (bug 409269)
+ *  Yatta Solutions - news (bug 401721), public API (bug 432803)
  *  JBoss (Pascal Rapicault) - Bug 406907 - Add p2 remediation page to MPC install flow
  *******************************************************************************/
 package org.eclipse.epp.internal.mpc.ui.wizards;
@@ -52,10 +52,17 @@ import org.eclipse.epp.internal.mpc.ui.operations.FeatureDescriptor;
 import org.eclipse.epp.internal.mpc.ui.operations.ProfileChangeOperationComputer;
 import org.eclipse.epp.internal.mpc.ui.operations.ProfileChangeOperationComputer.OperationType;
 import org.eclipse.epp.internal.mpc.ui.wizards.MarketplaceUrlHandler.SolutionInstallationInfo;
+import org.eclipse.epp.internal.mpc.ui.wizards.MarketplaceViewer.ContentType;
 import org.eclipse.epp.internal.mpc.ui.wizards.SelectionModel.CatalogItemEntry;
 import org.eclipse.epp.internal.mpc.ui.wizards.SelectionModel.FeatureEntry;
 import org.eclipse.epp.mpc.core.payment.PaymentService;
+import org.eclipse.epp.mpc.core.model.ICategory;
+import org.eclipse.epp.mpc.core.model.IMarket;
+import org.eclipse.epp.mpc.core.model.INews;
+import org.eclipse.epp.mpc.core.model.INode;
 import org.eclipse.epp.mpc.ui.CatalogDescriptor;
+import org.eclipse.epp.mpc.ui.MarketplaceUrlHandler;
+import org.eclipse.epp.mpc.ui.Operation;
 import org.eclipse.equinox.internal.p2.discovery.AbstractDiscoveryStrategy;
 import org.eclipse.equinox.internal.p2.discovery.model.CatalogItem;
 import org.eclipse.equinox.internal.p2.ui.ProvUI;
@@ -76,6 +83,7 @@ import org.eclipse.swt.browser.Browser;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.PartInitException;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.browser.IWebBrowser;
 import org.eclipse.ui.browser.IWorkbenchBrowserSupport;
 import org.eclipse.ui.internal.browser.WorkbenchBrowserSupport;
@@ -96,6 +104,68 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 	private static final String DEBUG_NEWS_TITLE = MarketplaceClientUi.BUNDLE_ID + "/news/title"; //$NON-NLS-1$
 
 	private static final String DEBUG_NEWS_URL = MarketplaceClientUi.BUNDLE_ID + "/news/url"; //$NON-NLS-1$
+
+	public static class WizardState {
+		private ContentType contentType;
+
+		private Set<INode> content;
+
+		private IMarket filterMarket;
+
+		private ICategory filterCategory;
+
+		private String filterQuery;
+
+		private Boolean proceedWithInstallation;
+
+		public ContentType getContentType() {
+			return contentType;
+		}
+
+		public void setContentType(ContentType contentType) {
+			this.contentType = contentType;
+		}
+
+		public Set<INode> getContent() {
+			return content;
+		}
+
+		public void setContent(Set<INode> content) {
+			this.content = content;
+		}
+
+		public IMarket getFilterMarket() {
+			return filterMarket;
+		}
+
+		public void setFilterMarket(IMarket filterMarket) {
+			this.filterMarket = filterMarket;
+		}
+
+		public ICategory getFilterCategory() {
+			return filterCategory;
+		}
+
+		public void setFilterCategory(ICategory filterCategory) {
+			this.filterCategory = filterCategory;
+		}
+
+		public String getFilterQuery() {
+			return filterQuery;
+		}
+
+		public void setFilterQuery(String filterQuery) {
+			this.filterQuery = filterQuery;
+		}
+
+		public Boolean getProceedWithInstallation() {
+			return proceedWithInstallation;
+		}
+
+		public void setProceedWithInstallation(Boolean proceedWithInstallation) {
+			this.proceedWithInstallation = proceedWithInstallation;
+		}
+	}
 
 	private Set<String> installedFeatures;
 
@@ -122,6 +192,8 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 	private String errorMessage;
 
 	private PaymentService paymentService;
+
+	private WizardState initialState;
 
 	public String getErrorMessage() {
 		return errorMessage;
@@ -181,30 +253,48 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 		}
 		initialSelectionInitialized = true;
 		initializeCatalog();
+		if (getConfiguration().getInitialState() != null || getConfiguration().getInitialOperations() != null) {
 		try {
 			getContainer().run(true, true, new IRunnableWithProgress() {
 				public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
-					new SelectionModelStateSerializer(getCatalog(), getSelectionModel()).deserialize(monitor,
-							getConfiguration().getInitialState(), getConfiguration().getInitialOperationByNodeId());
+						new SelectionModelStateSerializer(getCatalog(), getSelectionModel()).deserialize(
+								getConfiguration().getInitialState(), getConfiguration().getInitialOperations(),
+								monitor);
 				}
 			});
 		} catch (InvocationTargetException e) {
-			throw new CoreException(
-					MarketplaceClientUi.computeStatus(e, Messages.MarketplaceViewer_unexpectedException));
+				throw new CoreException(MarketplaceClientUi.computeStatus(e,
+						Messages.MarketplaceViewer_unexpectedException));
 		} catch (InterruptedException e) {
 			// user canceled
 			throw new CoreException(Status.CANCEL_STATUS);
 		}
-		for (Entry<CatalogItem, Operation> entry : getSelectionModel().getItemToOperation().entrySet()) {
+			for (Entry<CatalogItem, Operation> entry : getSelectionModel().getItemToSelectedOperation().entrySet()) {
 			if (entry.getValue() != Operation.NONE) {
 				entry.getKey().setSelected(true);
 			}
 		}
 	}
+		WizardState initialState = getInitialState();
+		if (initialState != null && getStartingPage() == getCatalogPage()) {
+			getCatalogPage().initialize(initialState);
+		}
+	}
 
 	boolean wantInitializeInitialSelection() {
-		return !initialSelectionInitialized
-				&& (getConfiguration().getInitialState() != null || getConfiguration().getInitialOperationByNodeId() != null);
+		if (initialSelectionInitialized) {
+			return false;
+		} else if (getConfiguration().getInitialState() != null || getConfiguration().getInitialOperations() != null) {
+			return true;
+		} else if (initialState != null) {
+			WizardState initialState = getInitialState();
+			if ((initialState.getContent() != null && !initialState.getContent().isEmpty())
+					|| (initialState.getContentType() != null && initialState.getContentType() != ContentType.SEARCH)
+					|| (initialState.getFilterCategory() != null || initialState.getFilterMarket() != null || initialState.getFilterQuery() != null)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@Override
@@ -326,7 +416,10 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 			}
 		} else if (getConfiguration().getCatalogDescriptor() != null) {
 			if (wantInitializeInitialSelection()) {
+				WizardState initialState = getInitialState();
+				if (initialState == null || !Boolean.FALSE.equals(initialState.getProceedWithInstallation())) {
 				return getFeatureSelectionWizardPage();
+			}
 			}
 			return getCatalogPage();
 		}
@@ -451,8 +544,8 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 						catalogDescriptor.getLabel(), catalogDescriptor.getDescription());
 				final String originalUrl = url;
 				url = appendWizardState(url);
-				browser.openURL(new URL(url)); // ORDER DEPENDENCY
-				getContainer().getShell().close();
+				browser.openURL(new URL(url)); // ORDER DEPENDENCY //don't encode/validate URL - browser can be quite lenient
+				PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell().setActive();
 				if (!hookLocationListener(browser)) { // ORDER DEPENDENCY
 					browser.openURL(new URL(originalUrl));
 				}
@@ -558,14 +651,14 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 		if (getSelectionModel().computeProvisioningOperationViable()) {
 			ProfileChangeOperationComputer provisioningOperation = null;
 			try {
-				final Map<CatalogItem, Operation> itemToOperation = getSelectionModel().getItemToOperation();
+				final Map<CatalogItem, Operation> itemToOperation = getSelectionModel().getItemToSelectedOperation();
 				final Set<CatalogItem> selectedItems = getSelectionModel().getSelectedCatalogItems();
 				OperationType operationType = null;
 				for (Map.Entry<CatalogItem, Operation> entry : itemToOperation.entrySet()) {
 					if (!selectedItems.contains(entry.getKey())) {
 						continue;
 					}
-					OperationType entryOperationType = entry.getValue().getOperationType();
+					OperationType entryOperationType = OperationType.map(entry.getValue());
 					if (entryOperationType != null) {
 						if (operationType == null || operationType == OperationType.UPDATE) {
 							operationType = entryOperationType;
@@ -667,7 +760,7 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 		Set<CatalogItem> items = new HashSet<CatalogItem>();
 		Map<CatalogItem, Collection<String>> iusByCatalogItem = new HashMap<CatalogItem, Collection<String>>();
 		for (CatalogItemEntry entry : getSelectionModel().getCatalogItemEntries()) {
-			if (entry.getOperation() != Operation.INSTALL) {
+			if (entry.getSelectedOperation() != Operation.INSTALL) {
 				continue;
 			}
 			List<FeatureEntry> features = entry.getChildren();
@@ -702,26 +795,27 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 
 	protected void updateNews() {
 		CatalogDescriptor catalogDescriptor = getConfiguration().getCatalogDescriptor();
-		News news = null;
+		INews news = null;
 		if (Boolean.parseBoolean(Platform.getDebugOption(DEBUG_NEWS_FLAG))) {
 			// use debug override values
 			String debugNewsUrl = Platform.getDebugOption(DEBUG_NEWS_URL);
 			if (debugNewsUrl != null && debugNewsUrl.length() > 0) {
-				news = new News();
-				news.setUrl(debugNewsUrl);
+				News debugNews = new News();
+				news = debugNews;
+				debugNews.setUrl(debugNewsUrl);
 				String debugNewsTitle = Platform.getDebugOption(DEBUG_NEWS_TITLE);
 				if (debugNewsTitle == null || debugNewsTitle.length() == 0) {
-					news.setShortTitle("Debug News"); //$NON-NLS-1$
+					debugNews.setShortTitle("Debug News"); //$NON-NLS-1$
 				} else {
-					news.setShortTitle(debugNewsTitle);
+					debugNews.setShortTitle(debugNewsTitle);
 				}
-				news.setTimestamp(System.currentTimeMillis());
+				debugNews.setTimestamp(System.currentTimeMillis());
 			}
 		}
 		if (news == null) {
 			// try requesting news from marketplace
 			try {
-				final News[] result = new News[1];
+				final INews[] result = new INews[1];
 				getContainer().run(true, true, new IRunnableWithProgress() {
 
 					public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
@@ -757,10 +851,18 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 		return key;
 	}
 
-	public static void resumeWizard(Display display, Object state, boolean proceedWithInstall) { //FIXME proceedWithInstall doesn't work anymore!?
+	public void setInitialState(WizardState initialState) {
+		this.initialState = initialState;
+	}
+
+	public WizardState getInitialState() {
+		return initialState;
+	}
+
+	public static void resumeWizard(Display display, Object state, boolean proceedWithInstall) {
 		String catalogUrl = (String) state;
 		if (proceedWithInstall) {
-			SolutionInstallationInfo installInfo = MarketplaceUrlHandler.createSolutionInstallInfo(catalogUrl);
+			org.eclipse.epp.mpc.ui.MarketplaceUrlHandler.SolutionInstallationInfo installInfo = MarketplaceUrlHandler.createSolutionInstallInfo(catalogUrl);
 			if (installInfo != null) {
 				MarketplaceUrlHandler.triggerInstall(installInfo);
 				return;
@@ -782,7 +884,9 @@ public class MarketplaceWizard extends DiscoveryWizard implements InstallProfile
 				throw new IllegalStateException(e); // should never happen
 			}
 			if (!proceedWithInstall) {
-				command.setWizardPage(CatalogPage.class.getSimpleName());
+				WizardState wizardState = new WizardState();
+				wizardState.setProceedWithInstallation(false);
+				command.setWizardDialogState(wizardState);
 			}
 		}
 		display.asyncExec(new Runnable() {

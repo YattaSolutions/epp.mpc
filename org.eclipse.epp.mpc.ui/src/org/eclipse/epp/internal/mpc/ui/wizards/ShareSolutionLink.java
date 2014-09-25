@@ -7,6 +7,7 @@
  *
  * Contributors:
  * 	The Eclipse Foundation - initial API and implementation
+ * 	Yatta Solutions - bug 432803: public API
  *******************************************************************************/
 package org.eclipse.epp.internal.mpc.ui.wizards;
 
@@ -15,10 +16,10 @@ import java.lang.reflect.Method;
 import java.net.URI;
 
 import org.eclipse.core.runtime.URIUtil;
-import org.eclipse.epp.internal.mpc.core.service.Node;
 import org.eclipse.epp.internal.mpc.core.util.TextUtil;
 import org.eclipse.epp.internal.mpc.ui.MarketplaceClientUi;
 import org.eclipse.epp.internal.mpc.ui.MarketplaceClientUiPlugin;
+import org.eclipse.epp.mpc.core.model.INode;
 import org.eclipse.equinox.internal.p2.discovery.model.CatalogItem;
 import org.eclipse.equinox.internal.p2.ui.discovery.util.WorkbenchUtil;
 import org.eclipse.jface.dialogs.MessageDialog;
@@ -63,6 +64,7 @@ public class ShareSolutionLink {
 
 	private static Button createShareLink(Composite parent) {
 		final Button share = new Button(parent, SWT.PUSH);
+		DiscoveryItem.setWidgetId(share, DiscoveryItem.WIDGET_ID_SHARE);
 		share.setImage(MarketplaceClientUiPlugin.getInstance()
 				.getImageRegistry()
 				.get(MarketplaceClientUiPlugin.ITEM_ICON_SHARE));
@@ -139,7 +141,7 @@ public class ShareSolutionLink {
 	}
 
 	private String getUrl() {
-		return ((Node) catalogItem.getData()).getUrl();
+		return ((INode) catalogItem.getData()).getUrl();
 	}
 
 	private void openMail(URI uri) throws Exception {

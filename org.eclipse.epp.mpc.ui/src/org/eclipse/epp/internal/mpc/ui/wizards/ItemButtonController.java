@@ -7,11 +7,13 @@
  *
  * Contributors:
  * 	The Eclipse Foundation - initial API and implementation
+ * 	Yatta Solutions - bug 432803: public API
  *******************************************************************************/
 package org.eclipse.epp.internal.mpc.ui.wizards;
 
 import org.eclipse.epp.internal.mpc.ui.catalog.MarketplaceNodeCatalogItem;
 import org.eclipse.epp.mpc.core.payment.PaymentItem;
+import org.eclipse.epp.mpc.ui.Operation;
 import org.eclipse.equinox.internal.p2.discovery.model.CatalogItem;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
@@ -19,7 +21,7 @@ import org.eclipse.swt.widgets.Button;
 
 /**
  * A controller that controls the multi-state install/uninstall button
- *
+ * 
  * @author David Green
  */
 @SuppressWarnings("rawtypes")
@@ -32,7 +34,7 @@ class ItemButtonController {
 		DISABLED(Messages.ItemButtonController_install, Operation.NONE, true), //
 		UPDATE_DISABLED(Messages.ItemButtonController_update, Operation.NONE, true), //
 		UPDATE(Messages.ItemButtonController_update, Operation.NONE, false), //
-		UPDATE_PENDING(Messages.ItemButtonController_updatePending, Operation.CHECK_FOR_UPDATES, false);
+		UPDATE_PENDING(Messages.ItemButtonController_updatePending, Operation.UPDATE, false);
 
 		final String label;
 
@@ -138,11 +140,11 @@ class ItemButtonController {
 			buttonState = ButtonState.DISABLED;
 			secondaryButtonState = ButtonState.DISABLED;
 		} else {
-			Operation operation = item.getOperation();
+			Operation operation = item.getSelectedOperation();
 			boolean installed = isItemInstalled();
 			if (installed) {
 				switch (operation) {
-				case CHECK_FOR_UPDATES:
+				case UPDATE:
 					buttonState = ButtonState.UPDATE_PENDING;
 					secondaryButtonState = ButtonState.UNINSTALL;
 					break;
@@ -188,15 +190,24 @@ class ItemButtonController {
 
 	private void updateAppearance() {
 		ButtonState state = buttonState;
-		button.setText(getLabel(state));
+		boolean relayout = false;
+		if (!getLabel(state).equals(button.getText())) {
+			button.setText(getLabel(state));
+			relayout = true;
+		}
 		button.setEnabled(!buttonState.disabled);
 		if (secondaryButton != null) {
+			if (!secondaryButtonState.label.equals(secondaryButton.getText())) {
 			secondaryButton.setText(secondaryButtonState.label);
+				relayout = true;
+			}
 			secondaryButton.setEnabled(!secondaryButtonState.disabled);
 		}
 		// button image? Due to platform limitations we can't set the button color
 
-		item.layout(true, true);
+		if (relayout) {
+			item.layout(true, false);
+		}
 	}
 
 	private String getLabel(ButtonState state) {

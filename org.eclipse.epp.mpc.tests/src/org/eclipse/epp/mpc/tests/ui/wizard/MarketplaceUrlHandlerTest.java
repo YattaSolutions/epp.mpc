@@ -7,35 +7,42 @@
  *
  * Contributors:
  *     The Eclipse Foundation - initial API and implementation
+ *     Yatta Solutions - bug 432803: public API
  *******************************************************************************/
 package org.eclipse.epp.mpc.tests.ui.wizard;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.net.URL;
 
 import org.eclipse.epp.internal.mpc.ui.CatalogRegistry;
-import org.eclipse.epp.internal.mpc.ui.wizards.MarketplaceUrlHandler;
-import org.eclipse.epp.internal.mpc.ui.wizards.MarketplaceUrlHandler.SolutionInstallationInfo;
+import org.eclipse.epp.mpc.core.model.INode;
 import org.eclipse.epp.mpc.ui.CatalogDescriptor;
+import org.eclipse.epp.mpc.ui.MarketplaceUrlHandler;
+import org.eclipse.epp.mpc.ui.MarketplaceUrlHandler.SolutionInstallationInfo;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 /**
  * Test {@link MarketplaceUrlHandler}
- * 
+ *
  * @author Benjamin Muskalla
  */
 public class MarketplaceUrlHandlerTest {
 
+	private CatalogDescriptor eclipseMarketplace;
+
 	@Before
 	public void installMockMarketplace() throws Exception {
 		URL url = new URL("http://marketplace.eclipse.org");
-		CatalogDescriptor eclipseMarketplace = new CatalogDescriptor(url, "Eclipse Marketplace");
+		eclipseMarketplace = new CatalogDescriptor(url, "Eclipse Marketplace");
 		CatalogRegistry.getInstance().register(eclipseMarketplace);
+	}
+
+	@After
+	public void uninstallMockMarketplace() throws Exception {
+		CatalogRegistry.getInstance().unregister(eclipseMarketplace);
 	}
 
 	@Test
@@ -79,4 +86,46 @@ public class MarketplaceUrlHandlerTest {
 		assertFalse(MarketplaceUrlHandler.isPotentialSolution(url));
 	}
 
+	@Test
+	public void testNodeUrls() throws Exception {
+		final INode[] testNode = new INode[1];
+		MarketplaceUrlHandler handler = new MarketplaceUrlHandler() {
+			@Override
+			protected boolean handleNode(CatalogDescriptor descriptor, String url, INode node) {
+				testNode[0] = node;
+				return true;
+			}
+		};
+
+		testNode[0] = null;
+		String url = "http://marketplace.eclipse.org/content/test";
+		assertTrue(handler.handleUri(url));
+		assertNotNull(testNode[0]);
+		assertEquals(url, testNode[0].getUrl());
+
+		testNode[0] = null;
+		String nodeId = "12345";
+		url = "http://marketplace.eclipse.org/node/" + nodeId;
+		assertTrue(handler.handleUri(url));
+		assertNotNull(testNode[0]);
+		assertEquals(nodeId, testNode[0].getId());
+	}
+
+	@Test
+	public void testHttpsVariants() {
+		MarketplaceUrlHandler handler = new MarketplaceUrlHandler() {
+			@Override
+			protected boolean handleFeatured(CatalogDescriptor descriptor, String url, String category, String market) {
+				assertEquals(eclipseMarketplace, descriptor);
+				assertEquals("featured", url);
+				return true;
+			}
+		};
+
+		String url = "http://marketplace.eclipse.org/featured";
+		assertTrue(handler.handleUri(url));
+
+		url = "https://marketplace.eclipse.org/featured";
+		assertTrue(handler.handleUri(url));
+	}
 }

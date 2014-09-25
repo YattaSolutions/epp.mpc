@@ -7,38 +7,28 @@
  *
  * Contributors:
  *     The Eclipse Foundation - initial API and implementation
+ *     Yatta Solutions - bug 432803: public API
  *******************************************************************************/
 package org.eclipse.epp.internal.mpc.core.service;
 
-import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.epp.internal.mpc.core.service.xml.Unmarshaller;
-import org.eclipse.osgi.util.NLS;
+import org.eclipse.epp.mpc.core.service.IMarketplaceUnmarshaller;
+import org.eclipse.epp.mpc.core.service.ServiceHelper;
 
 public class RemoteMarketplaceService<T> extends RemoteService<T> {
 
-	public static final String API_URI_SUFFIX = "api/p"; //$NON-NLS-1$
-
-	@Override
-	@SuppressWarnings({ "unchecked" })
-	protected T processRequest(String baseUri, String relativePath, IProgressMonitor monitor) throws CoreException {
-		final Unmarshaller unmarshaller = new Unmarshaller();
-
-		processRequest(baseUri, relativePath, unmarshaller, monitor);
-
-		Object model = unmarshaller.getModel();
-		if (model == null) {
-			// if we reach here this should never happen
-			throw new IllegalStateException();
-		} else {
-			try {
-				return (T) model;
-			} catch (Exception e) {
-				String message = NLS.bind(Messages.DefaultMarketplaceService_unexpectedResponseContent,
-						model.getClass().getSimpleName());
-				throw new CoreException(createErrorStatus(message, null));
-			}
-		}
+	public RemoteMarketplaceService(Class<T> cls) {
+		super(cls, createOrGetUnmarshaller());
 	}
+
+	private static IMarketplaceUnmarshaller createOrGetUnmarshaller() {
+		IMarketplaceUnmarshaller unmarshaller = ServiceHelper.getMarketplaceUnmarshaller();
+		if (unmarshaller == null) {
+			//no unmarshaller registered, create a default instance
+			unmarshaller = new MarketplaceUnmarshaller();
+		}
+		return unmarshaller;
+	}
+
+	public static final String API_URI_SUFFIX = "api/p"; //$NON-NLS-1$
 
 }

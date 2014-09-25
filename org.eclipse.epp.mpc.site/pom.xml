@@ -15,104 +15,59 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.eclipse.epp.mpc</groupId>
-    <artifactId>mpc-parent</artifactId>
-    <version>1.2.1-SNAPSHOT</version>
+    <artifactId>org.eclipse.epp.mpc-parent</artifactId>
+    <version>1.3.1-SNAPSHOT</version>
+    <relativePath>../org.eclipse.epp.mpc-parent</relativePath>
   </parent>
   <artifactId>org.eclipse.epp.mpc.site</artifactId>
-  <packaging>eclipse-update-site</packaging>
+  <packaging>eclipse-repository</packaging>
   <name>EPP Marketplace Client</name>
-  <properties>
-    <qualifier>${project.unqualifiedVersion}</qualifier>
-    <sign-dir>tools/mylyn/hudson/mpc/signing</sign-dir>
-  </properties>
+
   <build>
     <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <version>2.2-beta-4</version>
-        <configuration>
-          <descriptors>
-            <descriptor>assembly.xml</descriptor>
-          </descriptors>
-        </configuration>
-        <executions>
-          <execution>
-            <id>make-assembly</id>
-            <phase>package</phase>
-            <goals>
-              <goal>single</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
       <plugin>
         <artifactId>maven-resources-plugin</artifactId>
         <executions>
           <execution>
             <id>copy-resources</id>
-            <phase>validate</phase>
+            <phase>process-resources</phase>
             <goals>
               <goal>copy-resources</goal>
             </goals>
             <configuration>
-              <outputDirectory>${basedir}/target/site</outputDirectory>
+              <outputDirectory>${project.build.directory}/repository</outputDirectory>
               <resources>
                 <resource>
-                  <directory>.</directory>
+                  <directory>${basedir}</directory>
                   <includes>
                     <include>index.html</include>
-					<include>web/*</include>
+                    <include>web/*</include>
                   </includes>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>copy-promotion</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${basedir}</directory>
+                  <includes>
+                    <include>promote/*</include>
+                  </includes>
+                  <filtering>true</filtering>
                 </resource>
               </resources>
             </configuration>
           </execution>
         </executions>
       </plugin>
-	  <plugin>
-		<groupId>org.apache.maven.plugins</groupId>
-		<artifactId>maven-antrun-plugin</artifactId>
-		<version>1.6</version>
-		<executions>
-		  <execution>
-			<id>pack-and-sign</id>
-			<phase>install</phase>
-			<configuration>
-			  <target>
-				<ant antfile="pack-and-sign/build.xml">
-				  <property name="localRepository" value="${settings.localRepository}"/>
-				  <property name="projectDir" value="${project.build.directory}"/>
-				  <property name="signDir" value="${sign-dir}"/>
-				  <property name="archiveDir" value="${archive-dir}"/>
-				  <property name="siteDir" value="${site-dir}"/>
-				  
-				  <property name="dist" value="mpc"/>
-				  <property name="filter" value="mpc"/>
-				  <property name="repositoryName" value="${project.name}"/>
-				  <property name="pack200" value="${pack200}"/>
-				  
-				  <property name="skipSign" value="${skip-sign}"/>
-				  <property name="skipPack" value="${skip-pack}"/>
-				  <property name="skipPromote" value="${skip-promote}"/>
-				  
-				  <property name="version" value="${unqualifiedVersion}"/>
-				  <property name="qualifier" value="${buildQualifier}"/>
-				</ant>
-				<echo file="${project.build.directory}/version.properties">
-				  <![CDATA[
-${unqualifiedVersion}
-${buildQualifier}
-]]>
-				</echo>
-			  </target>
-			</configuration>
-			<goals>
-			  <goal>run</goal>
-			</goals>
-		  </execution>
-		</executions>
-	  </plugin>
     </plugins>
   </build>
 </project>
